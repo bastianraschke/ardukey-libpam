@@ -1,0 +1,6 @@
+Name: 2FA with ArduKey
+Default: yes
+Priority: 257
+Auth-Type: Primary
+Auth:
+	sufficient			pam_python.so pam_ardukey.py

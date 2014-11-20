@@ -1,0 +1,6 @@
+#!/bin/sh
+
+## Adds PAM configuration to "/etc/pam.d/common-auth":
+pam-auth-update --package ardukey
+
+exit 0
