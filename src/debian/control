@@ -1,0 +1,15 @@
+Source: libpam-ardukey
+Maintainer: Bastian Raschke <bastian.raschke@posteo.de>
+Section: admin
+Priority: optional
+Standards-Version: 1.0
+Build-Depends: debhelper (>= 9)
+
+Package: libpam-ardukey
+Depends: python (>= 2.7), libpam-python
+Architecture: all
+Homepage: https://sicherheitskritisch.de
+Description: Pluggable Authentication Module for 2FA with ArduKey
+  Lorem ipsom
+  .
+  Lorem ipsom
