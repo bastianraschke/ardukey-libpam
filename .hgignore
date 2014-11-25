@@ -1,3 +1,4 @@
 syntax: glob
 
+src/debian/libpam-ardukey/**
 **.DS_Store
