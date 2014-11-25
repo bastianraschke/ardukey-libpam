@@ -2,7 +2,7 @@ Protokoll:
 
 Anfrage:
 	[B]
-		ID			Identifiziert, welcher Client authentifiziert werden soll
+	4	ID			Identifiziert, welcher Client authentifiziert werden soll
 		OTP
 		nonce		Gegen Replayattacken
 		timeout?	Festlegen, wie lange OTP noch gültig ist, nachdem es auf dem Client erstellt wurde
@@ -10,13 +10,16 @@ Anfrage:
 
 Antwort:
 	[B]
-		ID
+	4	ID
 		OTP
 		nonce
-		statuscode
+	2?	statuscode
 				OK
 				REPLAYED_OTP		Schon bekanntes OTP wieder eingespielt
 				HMAC_FAIL
 				NO_CLIENT_FOUND		Falsche ID angegeben
 				OTHER??
 		h
+
+[B] Stellt die Länge in Byte dar.
+4 Byte ergeben 32 Byte ~ 1 Milliarde mögliche Nutzer
