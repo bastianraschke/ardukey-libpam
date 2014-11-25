@@ -1,0 +1,22 @@
+Protokoll:
+
+Anfrage:
+	[B]
+		ID			Identifiziert, welcher Client authentifiziert werden soll
+		OTP
+		nonce		Gegen Replayattacken
+		timeout?	Festlegen, wie lange OTP noch gültig ist, nachdem es auf dem Client erstellt wurde
+		h			HMAC
+
+Antwort:
+	[B]
+		ID
+		OTP
+		nonce
+		statuscode
+				OK
+				REPLAYED_OTP		Schon bekanntes OTP wieder eingespielt
+				HMAC_FAIL
+				NO_CLIENT_FOUND		Falsche ID angegeben
+				OTHER??
+		h
