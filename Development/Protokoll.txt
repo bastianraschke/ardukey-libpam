@@ -15,11 +15,28 @@ Antwort:
 		nonce
 	2?	statuscode
 				OK
-				REPLAYED_OTP		Schon bekanntes OTP wieder eingespielt
-				HMAC_FAIL
+				REPLAYED_OTP		Schon bekanntes OTP wieder eingespielt mit gültiger HMAC
+				REPLAYED_REQUEST	genau der gleiche request wir nochmal eingespielt
+				HMAC_FAIL			Signatur kaputt/ungültig
 				NO_CLIENT_FOUND		Falsche ID angegeben
+				OTP_BAD_FORMAT
+				SERVER_ERROR
 				OTHER??
 		h
 
 [B] Stellt die Länge in Byte dar.
-4 Byte ergeben 32 Byte ~ 1 Milliarde mögliche Nutzer
+4 Byte ergeben 32 Bit ~ 1 Milliarde mögliche Nutzer
+
+
+
+otp revokable
+device muss identity gebunden sein -> nicht einfach jedes device für "chef" accoutn verwendbar
+
+- 
+
+böse szenarien:
+
+- Antwort des Auth servers muss absolut richtig sein > ELEMENTAR
+  :gesendete nonce muss auch in der antwort iwie geprüft werden
+- auth server dns spoofing:
+  :nein, da kein shared secret
