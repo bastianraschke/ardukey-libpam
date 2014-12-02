@@ -1,0 +1,16 @@
+PAM-Flags:
+
+- Paranoid-Flag für PAM Modul, falls z.B. Netzwerkverbindung nicht verfügbar:
+  - wenn gesetzt: Authentifizierung abbrechen
+  - wenn nicht gesetzt: Login durch anderes Modul in PAM-Kette zulassen
+
+- Debug-Flag -> mehr Infos loggen
+
+PAM-Modul kann im Request vom Auth-server zusätzlich timestamp anfordern
+-> feingranularere Prüfung auf Seite des PAM-Moduls möglich
+
+Auch bei anderen Zertifikaten darf kein Zertifikatserror entstehen (und somit folgende rejection)
+
+OTP muss rückziehbar sein
+
+Gerät muss identity gebunden sein -> nicht einfach jedes device für "chef" accoutn verwendbar
