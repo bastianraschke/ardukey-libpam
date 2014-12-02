@@ -1,0 +1,35 @@
+Anfrage von PAM-Modul an Auth-Server:
+
+- id		API-Benutzername für HMAC
+- OTP 		Das gesendete OTP vom Benutzer
+- nonce		Eine zufällig-generierte Nonce vom PAM-Modul
+- timestamp	Boolean-Flag, um Timestamp zurücksenden zu lassen
+- timeout	?
+- hash		HMAC-Prüfung für restliche Parameter
+
+
+Antwort vom Auth-Server an PAM-Modul:
+
+- id		API-Benutzername für HMAC (Redundante Rücksendung um korrekte Anfrage-Antwort-Relation sicherzustellen)
+- OTP 		Das gesendete OTP vom Benutzer (Redundante Rücksendung um korrekte Anfrage-Antwort-Relation sicherzustellen)
+- datetime	Das aktuelle Datum mit Uhrzeit
+- status	Der Statuscode vom Server
+- hash		HMAC-Prüfung für restliche Parameter
+
+Mögliche Statuscodes:
+
+- OK
+- REPLAYED_OTP		Schon bekanntes OTP wieder eingespielt mit gültiger HMAC
+- REPLAYED_REQUEST	genau der gleiche request wir nochmal eingespielt
+- HMAC_FAIL			Signatur kaputt/ungültig
+- OTP_BAD_FORMAT
+- SERVER_ERROR
+- OTHER??
+
+
+Böse szenarien:
+
+- Antwort des Auth-Servers muss absolut richtig sein > ELEMENTAR
+  -> gesendete nonce muss auch in der antwort iwie geprüft werden
+- Auth-Server DNS spoofing:
+  -> nein, da Angreifer kein shared secret hat
