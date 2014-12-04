@@ -1,22 +1,28 @@
+#!/usr/bin/env python3
+
 """
 ArduKey 2FA
 PAM implementation.
+@author Philipp Meisberger, Bastian Raschke
 
-Copyright 2014 Bastian Raschke.
-All rights reserved. 
+Copyright 2014 Philipp Meisberger, Bastian Raschke.
+All rights reserved.
 """
 
 #import hashlib
+import syslog
 
-
-def auth_log(message):
+def auth_log(message, priority=syslog.LOG_INFO):
     """
-    Send errors to default auth log
+    Sends errors to default authentication log
 
+    @param string message
+    @param integer priority
+    @return void
     """
 
     syslog.openlog(facility=syslog.LOG_AUTH)
-    syslog.syslog("ArduKey: " + message)
+    syslog.syslog(priority, 'ArduKey PAM: ' + message)
     syslog.closelog()
 
 def pam_sm_authenticate(pamh, flags, argv):
@@ -35,74 +41,58 @@ def pam_sm_authenticate(pamh, flags, argv):
 
         ## Fallback
         if ( userName == None ):
-            userName = pamh.get_user()            
+            userName = pamh.get_user()
 
-        ## Be sure the user is set 
+        ## Be sure the user is set
         if ( userName == None ):
             raise Exception('The user is not known!')
 
-    except:
-        e = sys.exc_info()[1]
-        auth_log('Exception occured: ' + e.message)
+    except Exception as e:
+        auth_log(e.message, syslog.LOG_CRIT)
         return pamh.PAM_USER_UNKNOWN
 
-    auth_log('The user "' + userName + '" is asking for permission for service "' + str(pamh.service) + '".')
+    ## TODO: config file via argument!
+    configFile = '/etc/pam-ardukey.conf'
 
+    ## Tries to init Config
+    try:
+        globalConfig = Config(configFile)
 
-    ## TODO: read users public id in config file
-
-    ## Checks if the the user was added in configuration
-    if ( config.itemExists('Users', userName) == False ):
-        logger.error('The user was not added!')
+    except Exception as e:
+        auth_log(e.message, syslog.LOG_CRIT)
         return pamh.PAM_IGNORE
 
-    ## Tries to get user information (template position, fingerprint hash)
+    auth_log('The user "' + userName + '" is asking for permission for service "' + str(pamh.service) + '".', syslog.DEBUG)
+
+    ## Tries to init mapping file in users home directory
     try:
-        userData = config.readList('Users', userName)
-        
-        ## Validates user information
-        if ( len(userData) != 2 ):
-            raise Exception('The user information of "' + userName + '" is invalid!')
+        mappingFile = Config('/home/' + pamh.user + './pam-ardukey.mapping')
 
-        expectedPositionNumber = int(userData[0])
-        expectedFingerprintHash = userData[1]
+        ## Public ID exists in mapping file?
+        if ( config.itemExists('Mapping', 'public_id') == False ):
+            raise Exception('No "public_id" was specified in mapping file!')
 
-    except:
-        e = sys.exc_info()[1]
-        logger.error(e.message, exc_info=False)
-        return pamh.PAM_AUTH_ERR
+        publicId = config.readString('Mapping', 'public_id')
 
+        if (publicId = ''):
+            raise Exception('Public_id must not be empty!')
+
+    except Exception as e:
+        auth_log(e.message, syslog.LOG_CRIT)
+        return PAM_ABORT
 
 
     ## TODO: if auth server is not available
     ## pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pamfingerprint ' + VERSION + ': Sensor initialization failed!'))
     ## return pamh.PAM_ABORT
-
-
-
-
     response = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_OFF, 'Please connect ArduKey and press button...'))
 
+    otp = response.resp
 
-
-
-    try:
-
-        ## Checks if the calculated hash is equal to expected hash from user
-        if ( fingerprintHash == expectedFingerprintHash ):
-            logger.info('Access granted!')
-            pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pamfingerprint ' + VERSION + ': Access granted!'))
-            return pamh.PAM_SUCCESS
-        else:
-            logger.info('The found match is not assigned to user!')
-            pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pamfingerprint ' + VERSION + ': Access denied!'))
-            return pamh.PAM_AUTH_ERR
-
-    except:
-        e = sys.exc_info()[1]
-        logger.error('Fingerprint read failed!', exc_info=True)
-        pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pamfingerprint ' + VERSION + ': Access denied!'))
-        return pamh.PAM_AUTH_ERR
+    if (otp = publicId):
+        return PAM_SUCCESS
+    else
+        return PAM_AUTH_ERR
 
     ## Denies for default
     return pamh.PAM_AUTH_ERR
