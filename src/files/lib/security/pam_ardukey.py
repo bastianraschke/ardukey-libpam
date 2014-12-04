@@ -28,7 +28,7 @@ def auth_log(message, priority=syslog.LOG_INFO):
     """
 
     syslog.openlog(facility=syslog.LOG_AUTH)
-    syslog.syslog(priority, 'ArduKey PAM: ' + message)
+    syslog.syslog(priority, 'pam_ardukey: ' + message)
     syslog.closelog()
 
 def pam_sm_authenticate(pamh, flags, argv):
@@ -57,17 +57,6 @@ def pam_sm_authenticate(pamh, flags, argv):
         auth_log(e.message, syslog.LOG_CRIT)
         return pamh.PAM_USER_UNKNOWN
 
-    ## TODO: config file via argument!
-    configFile = '/etc/pam-ardukey.conf'
-
-    ## Tries to init Config
-    try:
-        globalConfig = Config(configFile)
-
-    except Exception as e:
-        auth_log(e.message, syslog.LOG_CRIT)
-        return pamh.PAM_IGNORE
-
     auth_log('The user "' + userName + '" is asking for permission for service "' + str(pamh.service) + '".', syslog.LOG_DEBUG)
 
     ## Tries to init mapping file in users home directory
@@ -80,24 +69,64 @@ def pam_sm_authenticate(pamh, flags, argv):
 
         publicId = mappingFile.readString('Mapping', 'public_id')
 
-        if (publicId == ''):
+        if ( publicId == '' ):
             raise Exception('Public_id must not be empty!')
 
     except Exception as e:
         auth_log(e.message, syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
+    response = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON, 'Please connect ArduKey and press button...'))
 
-    ## TODO: if auth server is not available
-    ## pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'ArduKey ' + VERSION + ': Initialization failed!'))
-    ## return pamh.PAM_ABORT
+    ## TODO: config file via argument!
+    configFile = '/etc/pam-ardukey.conf'
 
-    response = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_OFF, 'Please connect ArduKey and press button...'))
+    ## Tries to init Config
+    try:
+        globalConfig = Config(configFile)
+
+    except Exception as e:
+        auth_log(e.message, syslog.LOG_CRIT)
+        return pamh.PAM_IGNORE
+
+    ## Try to connect to auth server
+    try:
+        servers = globalConfig.readList('pam-ardukey', 'servers')
+        requestTimeout = globalConfig.readInteger('pam-ardukey', 'timeout')
+
+    except Exception as e:
+        auth_log(e.message, syslog.LOG_ERR)
+        return pamh.PAM_ABORT
+
+
+    for server in servers:
+        try:
+            connection = http.client.HTTPConnection(server, timeout=requestTimeout)
+            connection.request('GET', "/ardukeyotp/1.0/verify")
+            response = connection.getresponse()
+            print(response.status, response.reason)
+
+            data = response.read()
+            requestError = False
+            break
+
+        except:
+            requestError = True
+            continue
+
+        if ( requestError == False ):
+            ## TODO: if auth server is not available
+            pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Connection failed!'))
+            return pamh.PAM_ABORT
 
     ## Check OTP matches public ID
-    if (response.resp == publicId):
+    if ( response.resp == publicId ):
+        auth_log('Access granted!')
+        pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Access granted!'))
         return pamh.PAM_SUCCESS
     else:
+        auth_log('The found match is not assigned to user!', syslog.LOG_WARNING)
+        pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Access denied!'))
         return pamh.PAM_AUTH_ERR
 
     ## Denies for default

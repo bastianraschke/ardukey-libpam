@@ -1,4 +1,5 @@
 ﻿#!/usr/bin/env python3
+
 """
 PAM Ardukey
 @author Philipp Meisberger, Bastian Raschke
