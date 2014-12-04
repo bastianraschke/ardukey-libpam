@@ -9,6 +9,12 @@ Copyright 2014 Philipp Meisberger, Bastian Raschke.
 All rights reserved.
 """
 
+import sys
+sys.path.append('/usr/lib')
+
+from pamardukey.Config import *
+from pamardukey.version import VERSION
+
 #import hashlib
 import syslog
 
@@ -62,37 +68,37 @@ def pam_sm_authenticate(pamh, flags, argv):
         auth_log(e.message, syslog.LOG_CRIT)
         return pamh.PAM_IGNORE
 
-    auth_log('The user "' + userName + '" is asking for permission for service "' + str(pamh.service) + '".', syslog.DEBUG)
+    auth_log('The user "' + userName + '" is asking for permission for service "' + str(pamh.service) + '".', syslog.LOG_DEBUG)
 
     ## Tries to init mapping file in users home directory
     try:
-        mappingFile = Config('/home/' + pamh.user + './pam-ardukey.mapping')
+        mappingFile = Config('/home/' + userName + '/.pam-ardukey.mapping')
 
         ## Public ID exists in mapping file?
-        if ( config.itemExists('Mapping', 'public_id') == False ):
+        if ( mappingFile.itemExists('Mapping', 'public_id') == False ):
             raise Exception('No "public_id" was specified in mapping file!')
 
-        publicId = config.readString('Mapping', 'public_id')
+        publicId = mappingFile.readString('Mapping', 'public_id')
 
-        if (publicId = ''):
+        if (publicId == ''):
             raise Exception('Public_id must not be empty!')
 
     except Exception as e:
-        auth_log(e.message, syslog.LOG_CRIT)
-        return PAM_ABORT
+        auth_log(e.message, syslog.LOG_ERR)
+        return pamh.PAM_ABORT
 
 
     ## TODO: if auth server is not available
-    ## pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pamfingerprint ' + VERSION + ': Sensor initialization failed!'))
+    ## pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'ArduKey ' + VERSION + ': Initialization failed!'))
     ## return pamh.PAM_ABORT
+
     response = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_OFF, 'Please connect ArduKey and press button...'))
 
-    otp = response.resp
-
-    if (otp = publicId):
-        return PAM_SUCCESS
-    else
-        return PAM_AUTH_ERR
+    ## Check OTP matches public ID
+    if (response.resp == publicId):
+        return pamh.PAM_SUCCESS
+    else:
+        return pamh.PAM_AUTH_ERR
 
     ## Denies for default
     return pamh.PAM_AUTH_ERR

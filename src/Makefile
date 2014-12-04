@@ -1,4 +1,4 @@
-LIBDIR = $(DESTDIR)/usr/lib/pam-ardukey
+LIBDIR = $(DESTDIR)/usr/lib/pamardukey
 BINDIR = $(DESTDIR)/usr/bin
 
 clean:
@@ -6,12 +6,13 @@ clean:
 
 install:
 	mkdir -p $(LIBDIR)
+	cp -r files/etc/ $(DESTDIR)/
 	cp -r files/lib/ $(DESTDIR)/
 	cp -r files/usr/ $(DESTDIR)/
 
 uninstall:
 	rm -rf $(LIBDIR)
+	rm -f $(DESTDIR)/etc/pamardukey.conf
 	rm -f $(DESTDIR)/usr/share/pam-configs/ardukey
 	rm -f $(BINDIR)/pam-ardukey-conf
 	rm -f $(DESTDIR)/lib/security/pam_ardukey.py
-	rm -f $(DESTDIR)/etc/bash_completion.d/pam-ardukey
