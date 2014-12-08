@@ -1,22 +1,34 @@
+#!/usr/bin/env python3
+
 """
 ArduKey 2FA
 PAM implementation.
+@author Philipp Meisberger, Bastian Raschke
 
-Copyright 2014 Bastian Raschke.
-All rights reserved. 
+Copyright 2014 Philipp Meisberger, Bastian Raschke.
+All rights reserved.
 """
 
+import sys
+sys.path.append('/usr/lib')
+
+from pamardukey.Config import *
+from pamardukey.version import VERSION
+
 #import hashlib
+import syslog
 
-
-def auth_log(message):
+def auth_log(message, priority=syslog.LOG_INFO):
     """
-    Send errors to default auth log
+    Sends errors to default authentication log
 
+    @param string message
+    @param integer priority
+    @return void
     """
 
     syslog.openlog(facility=syslog.LOG_AUTH)
-    syslog.syslog("ArduKey: " + message)
+    syslog.syslog(priority, 'pam_ardukey: ' + message)
     syslog.closelog()
 
 def pam_sm_authenticate(pamh, flags, argv):
@@ -35,73 +47,86 @@ def pam_sm_authenticate(pamh, flags, argv):
 
         ## Fallback
         if ( userName == None ):
-            userName = pamh.get_user()            
+            userName = pamh.get_user()
 
-        ## Be sure the user is set 
+        ## Be sure the user is set
         if ( userName == None ):
             raise Exception('The user is not known!')
 
-    except:
-        e = sys.exc_info()[1]
-        auth_log('Exception occured: ' + e.message)
+    except Exception as e:
+        auth_log(e.message, syslog.LOG_CRIT)
         return pamh.PAM_USER_UNKNOWN
 
-    auth_log('The user "' + userName + '" is asking for permission for service "' + str(pamh.service) + '".')
+    auth_log('The user "' + userName + '" is asking for permission for service "' + str(pamh.service) + '".', syslog.LOG_DEBUG)
 
+    ## Tries to init mapping file in users home directory
+    try:
+        mappingFile = Config('/home/' + userName + '/.pam-ardukey.mapping')
 
-    ## TODO: read users public id in config file
+        ## Public ID exists in mapping file?
+        if ( mappingFile.itemExists('Mapping', 'public_id') == False ):
+            raise Exception('No "public_id" was specified in mapping file!')
 
-    ## Checks if the the user was added in configuration
-    if ( config.itemExists('Users', userName) == False ):
-        logger.error('The user was not added!')
+        publicId = mappingFile.readString('Mapping', 'public_id')
+
+        if ( publicId == '' ):
+            raise Exception('Public_id must not be empty!')
+
+    except Exception as e:
+        auth_log(e.message, syslog.LOG_ERR)
+        return pamh.PAM_ABORT
+
+    response = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON, 'Please connect ArduKey and press button...'))
+
+    ## TODO: config file via argument!
+    configFile = '/etc/pam-ardukey.conf'
+
+    ## Tries to init Config
+    try:
+        globalConfig = Config(configFile)
+
+    except Exception as e:
+        auth_log(e.message, syslog.LOG_CRIT)
         return pamh.PAM_IGNORE
 
-    ## Tries to get user information (template position, fingerprint hash)
+    ## Try to connect to auth server
     try:
-        userData = config.readList('Users', userName)
-        
-        ## Validates user information
-        if ( len(userData) != 2 ):
-            raise Exception('The user information of "' + userName + '" is invalid!')
+        servers = globalConfig.readList('pam-ardukey', 'servers')
+        requestTimeout = globalConfig.readInteger('pam-ardukey', 'timeout')
 
-        expectedPositionNumber = int(userData[0])
-        expectedFingerprintHash = userData[1]
-
-    except:
-        e = sys.exc_info()[1]
-        logger.error(e.message, exc_info=False)
-        return pamh.PAM_AUTH_ERR
+    except Exception as e:
+        auth_log(e.message, syslog.LOG_ERR)
+        return pamh.PAM_ABORT
 
 
+    for server in servers:
+        try:
+            connection = http.client.HTTPConnection(server, timeout=requestTimeout)
+            connection.request('GET', "/ardukeyotp/1.0/verify")
+            response = connection.getresponse()
+            print(response.status, response.reason)
 
-    ## TODO: if auth server is not available
-    ## pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pamfingerprint ' + VERSION + ': Sensor initialization failed!'))
-    ## return pamh.PAM_ABORT
+            data = response.read()
+            requestError = False
+            break
 
+        except:
+            requestError = True
+            continue
 
+        if ( requestError == False ):
+            ## TODO: if auth server is not available
+            pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Connection failed!'))
+            return pamh.PAM_ABORT
 
-
-    response = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_OFF, 'Please connect ArduKey and press button...'))
-
-
-
-
-    try:
-
-        ## Checks if the calculated hash is equal to expected hash from user
-        if ( fingerprintHash == expectedFingerprintHash ):
-            logger.info('Access granted!')
-            pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pamfingerprint ' + VERSION + ': Access granted!'))
-            return pamh.PAM_SUCCESS
-        else:
-            logger.info('The found match is not assigned to user!')
-            pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pamfingerprint ' + VERSION + ': Access denied!'))
-            return pamh.PAM_AUTH_ERR
-
-    except:
-        e = sys.exc_info()[1]
-        logger.error('Fingerprint read failed!', exc_info=True)
-        pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pamfingerprint ' + VERSION + ': Access denied!'))
+    ## Check OTP matches public ID
+    if ( response.resp == publicId ):
+        auth_log('Access granted!')
+        pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Access granted!'))
+        return pamh.PAM_SUCCESS
+    else:
+        auth_log('The found match is not assigned to user!', syslog.LOG_WARNING)
+        pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Access denied!'))
         return pamh.PAM_AUTH_ERR
 
     ## Denies for default
