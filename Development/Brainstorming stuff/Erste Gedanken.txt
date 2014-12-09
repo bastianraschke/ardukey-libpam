@@ -13,4 +13,16 @@ Auch bei anderen Zertifikaten darf kein Zertifikatserror entstehen (und somit fo
 
 OTP muss rückziehbar sein
 
-Gerät muss identity gebunden sein -> nicht einfach jedes device für "chef" accoutn verwendbar
+Gerät muss identity gebunden sein -> nicht einfach jedes device für "chef" account verwendbar
+
+---
+
+1) Trudy meldet sich als root an
+2) Trudy gibt Root-Passwort korrekt ein
+3) Trudy sendet OTP durch ihren ArduKey zum Authserver
+4) Vor der Response ändert Trudy ihr Mapping-Datei, auf den Public ID des root
+5) PAM-Modul checkt Mapping-Datei und gibt OK :/
+
+Lösung:
+
+Da Trudy sich als root anmeldet, wird in dessen Mapping-Datei geguckt, auf welche Trudy keinen Zugriff haben sollte.
