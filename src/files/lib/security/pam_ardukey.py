@@ -76,10 +76,15 @@ def pam_sm_authenticate(pamh, flags, argv):
         auth_log(e.message, syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
-    response = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON, 'Please connect ArduKey and press button...'))
+    typedOTP = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON, 'Please connect ArduKey and press button...'))
 
-    ## TODO: config file via argument!
-    configFile = '/etc/pam-ardukey.conf'
+    ## Get the config file via PAM argument
+    equal = argv[1].index('=')
+
+    if ( equal != -1 ):
+        configFile = argv[1][equal+1:]
+    else:
+        configFile = '/etc/pam-ardukey.conf'
 
     ## Tries to init Config
     try:
@@ -101,12 +106,12 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     for server in servers:
         try:
+            ## TODO: Check timeout issue
             connection = http.client.HTTPConnection(server, timeout=requestTimeout)
             connection.request('GET', "/ardukeyotp/1.0/verify")
-            response = connection.getresponse()
-            print(response.status, response.reason)
+            httpResponse = connection.getresponse()
 
-            data = response.read()
+            httpResponseData = httpResponse.read()
             requestError = False
             break
 
@@ -114,13 +119,22 @@ def pam_sm_authenticate(pamh, flags, argv):
             requestError = True
             continue
 
-        if ( requestError == False ):
-            ## TODO: if auth server is not available
-            pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Connection failed!'))
-            return pamh.PAM_ABORT
+    ## Error occured?
+    if ( requestError == False ):
+        ## TODO: if auth server is not available
+        pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Connection failed!'))
+        return pamh.PAM_ABORT
+
+    ## TODO: Parse JSON
+    try:
+        httpResponseData = json.loads(httpResponseData)
+
+    except:
+        pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Failed to get respone from auth server!'))
+        return pamh.PAM_ABORT
 
     ## Check OTP matches public ID
-    if ( response.resp == publicId ):
+    if ( typedOTP.resp == publicId ):
         auth_log('Access granted!')
         pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Access granted!'))
         return pamh.PAM_SUCCESS
