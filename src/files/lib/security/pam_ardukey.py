@@ -17,6 +17,8 @@ from pamardukey.version import VERSION
 
 #import hashlib
 import syslog
+import json
+import hmac, hashlib
 
 def auth_log(message, priority=syslog.LOG_INFO):
     """
@@ -98,11 +100,18 @@ def pam_sm_authenticate(pamh, flags, argv):
     try:
         servers = globalConfig.readList('pam-ardukey', 'servers')
         requestTimeout = globalConfig.readInteger('pam-ardukey', 'timeout')
+        apiId = globalConfig.readInteger('pam-ardukey', 'apiId')
+        sharedSecret = globalConfig.readString('pam-ardukey', 'sharedSecret')
 
     except Exception as e:
         auth_log(e.message, syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
+    request = {}
+    request['otp'] = typedOTP
+    request['nonce'] = '12345678901234567890123456789012'
+    request['apiId'] = apiId
+    #request['hashmac'] =
 
     for server in servers:
         try:
@@ -125,8 +134,12 @@ def pam_sm_authenticate(pamh, flags, argv):
         pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Connection failed!'))
         return pamh.PAM_ABORT
 
+    print('test')
+    print(httpResponseData)
+
     ## TODO: Parse JSON
     try:
+        print(httpResponseData)
         httpResponseData = json.loads(httpResponseData)
 
     except:
