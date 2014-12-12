@@ -1,14 +1,22 @@
 LIBDIR = $(DESTDIR)/usr/lib/pamardukey
 BINDIR = $(DESTDIR)/usr/bin
 
+all:
+	@echo "Try 'make install' or 'make clean'."
+	@exit 1
+
 clean:
-	rm -f *.py[co] */*.py[co]
+	find files/ -name "*.pyc" -exec rm -rf {} \;
+	rm -rf files/libraries/__pycache__/
 
 install:
-	mkdir -p $(LIBDIR)
-	cp -r files/etc/ $(DESTDIR)/
-	cp -r files/lib/ $(DESTDIR)/
-	cp -r files/usr/ $(DESTDIR)/
+	install -D --mode 644 files/lib/security/pam_ardukey.py $(DESTDIR)/usr/security/pam_ardukey.py
+	install -D --mode 644 files/etc/pam-ardukey.conf $(DESTDIR)/etc/pam-ardukey.conf
+	install -D --mode 644 files/$(LIBDIR)/__init__.py
+	install -D --mode 644 files/$(LIBDIR)/Config.py
+	install -D --mode 644 files/$(LIBDIR)/version.py
+	install -D --mode 644 files/usr/share/pam-configs/ardukey $(DESTDIR)/usr/share/pam-configs/ardukey
+	install -D --mode 755 files/usr/bin/pam-ardukey-conf $(DESTDIR)/usr/bin/ pam-ardukey-conf
 
 uninstall:
 	rm -rf $(LIBDIR)
