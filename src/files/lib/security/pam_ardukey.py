@@ -9,15 +9,14 @@ Copyright 2014 Philipp Meisberger, Bastian Raschke.
 All rights reserved.
 """
 
-import sys
+import sys, syslog
 sys.path.append('/usr/lib')
 
 from pamardukey.Config import *
 from pamardukey.version import VERSION
 
-#import hashlib
-import syslog
 import json
+import random, string
 import hmac, hashlib
 
 def auth_log(message, priority=syslog.LOG_INFO):
@@ -79,6 +78,7 @@ def pam_sm_authenticate(pamh, flags, argv):
         return pamh.PAM_ABORT
 
     typedOTP = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON, 'Please connect ArduKey and press button...'))
+    typedOTP = typedOTP.resp
 
     ## Get the config file via PAM argument
     equal = argv[1].index('=')
@@ -107,20 +107,33 @@ def pam_sm_authenticate(pamh, flags, argv):
         auth_log(e.message, syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
+    nonce = ''
+
+    ## Generate random nonce
+    for _ in range(32):
+        chars = random.SystemRandom().choice(string.ascii_uppercase + string.digits)
+        nonce = nonce + ''.join(chars)
+
+    print('OTP: '+ typedOTP)
+    print('nonce: '+ nonce)
+    print('apiId: '+ str(apiId))
+
+    ## Set up request
     request = {}
     request['otp'] = typedOTP
-    request['nonce'] = '12345678901234567890123456789012'
+    request['nonce'] = nonce
     request['apiId'] = apiId
     #request['hashmac'] =
 
     for server in servers:
+        print(server)
         try:
             ## TODO: Check timeout issue
             connection = http.client.HTTPConnection(server, timeout=requestTimeout)
-            connection.request('GET', "/ardukeyotp/1.0/verify")
+            headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+            connection.request('GET', '/ardukeyotp/1.0/verify', json.dumps(request), headers)
             httpResponse = connection.getresponse()
-
-            httpResponseData = httpResponse.read()
+            httpResponseData = httpResponse.read().decode()
             requestError = False
             break
 
@@ -135,7 +148,7 @@ def pam_sm_authenticate(pamh, flags, argv):
         return pamh.PAM_ABORT
 
     print('test')
-    print(httpResponseData)
+    print(httpResponse.read())
 
     ## TODO: Parse JSON
     try:
@@ -147,7 +160,7 @@ def pam_sm_authenticate(pamh, flags, argv):
         return pamh.PAM_ABORT
 
     ## Check OTP matches public ID
-    if ( typedOTP.resp == publicId ):
+    if ( typedOTP == publicId ):
         auth_log('Access granted!')
         pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Access granted!'))
         return pamh.PAM_SUCCESS
