@@ -19,18 +19,50 @@ import json
 import random, string
 import hmac, hashlib
 
+def __calculateHmac(self, data):
+    """
+    Calculates a hexadecimal Hmac of given data dictionary.
+
+    @param dict data
+    The dictionary that contains data.
+
+    @return string
+    """
+
+    ## Only process dictionaries
+    if ( type(data) != dict ):
+        raise ValueError('The given data is not a dictionary!')
+
+    ## Checks if shared secret is given
+    if ( len(self.__sharedSecret) == 0 ):
+        raise ValueError('No shared secret given!')
+
+    payloadData = ''
+
+    ## Sort dictionary by key, to calculate the same Hmac always
+    for k in sorted(data):
+        payloadData += str(data[k])
+
+    sharedSecret = self.__sharedSecret.encode('utf-8')
+    payloadData = payloadData.encode('utf-8')
+
+    ## Calculate HMAC of current response
+    return hmac.new(sharedSecret, msg=payloadData, digestmod=hashlib.sha256).hexdigest()
+
 def auth_log(message, priority=syslog.LOG_INFO):
     """
     Sends errors to default authentication log
 
     @param string message
     @param integer priority
+
     @return void
     """
 
     syslog.openlog(facility=syslog.LOG_AUTH)
     syslog.syslog(priority, 'pam_ardukey: ' + message)
     syslog.closelog()
+
 
 def pam_sm_authenticate(pamh, flags, argv):
     """
@@ -39,6 +71,7 @@ def pam_sm_authenticate(pamh, flags, argv):
     @param pamh
     @param flags
     @param argv
+
     @return integer
     """
 
@@ -123,15 +156,15 @@ def pam_sm_authenticate(pamh, flags, argv):
     request['otp'] = typedOTP
     request['nonce'] = nonce
     request['apiId'] = apiId
-    #request['hashmac'] =
+    request['hashmac'] = self.__calculateHmac(request)
 
     for server in servers:
         print(server)
         try:
             ## TODO: Check timeout issue
             connection = http.client.HTTPConnection(server, timeout=requestTimeout)
-            headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-            connection.request('GET', '/ardukeyotp/1.0/verify', json.dumps(request), headers)
+            #headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+            connection.request('GET', '/ardukeyotp/1.0/verify?otp='+ request['otp'] +'&nonce='+ request['nonce'] +'&apiId='+ str(request['apiId']) +'&hmac='+ request['hmac'])
             httpResponse = connection.getresponse()
             httpResponseData = httpResponse.read().decode()
             requestError = False
@@ -147,8 +180,7 @@ def pam_sm_authenticate(pamh, flags, argv):
         pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Connection failed!'))
         return pamh.PAM_ABORT
 
-    print('test')
-    print(httpResponse.read())
+    print(httpResponseData)
 
     ## TODO: Parse JSON
     try:
