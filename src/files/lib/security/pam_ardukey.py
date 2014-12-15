@@ -34,7 +34,7 @@ def __calculateHmac(self, data):
         raise ValueError('The given data is not a dictionary!')
 
     ## Checks if shared secret is given
-    if ( len(self.__sharedSecret) == 0 ):
+    if ( len(sharedSecret) == 0 ):
         raise ValueError('No shared secret given!')
 
     payloadData = ''
@@ -43,11 +43,28 @@ def __calculateHmac(self, data):
     for k in sorted(data):
         payloadData += str(data[k])
 
-    sharedSecret = self.__sharedSecret.encode('utf-8')
+    sharedSecret = sharedSecret.encode('utf-8')
     payloadData = payloadData.encode('utf-8')
 
     ## Calculate HMAC of current response
     return hmac.new(sharedSecret, msg=payloadData, digestmod=hashlib.sha256).hexdigest()
+
+
+def __showMessage(pamh, text):
+    """
+    Shows a PAM conversation text info.
+
+    @param pamh
+    @param string text
+    """
+
+    if ( type(text) != str ):
+        raise ValueError('The given parameter is not a string!')
+
+    text = 'pam-ardukey ' + VERSION + ': '+ text
+    msg = pamh.Message(pamh.PAM_TEXT_INFO, text)
+    pamh.conversation(msg)
+
 
 def auth_log(message, priority=syslog.LOG_INFO):
     """
@@ -177,32 +194,61 @@ def pam_sm_authenticate(pamh, flags, argv):
     ## Error occured?
     if ( requestError == False ):
         ## TODO: if auth server is not available
-        pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Connection failed!'))
+        __showMessage(pamh, 'Connection failed!')
         return pamh.PAM_ABORT
 
     print(httpResponseData)
 
-    ## TODO: Parse JSON
+    ## Parse JSON response from server
     try:
-        print(httpResponseData)
-        httpResponseData = json.loads(httpResponseData)
+        ## Convert JSON response to Python dict
+        httpResponse = json.loads(httpResponseData)
+
+        ## Save the HMAC
+        responseHmac = httpResponse['hmac']
+
+        ## Exclude response HMAC itself from HMAC calculation
+        httpResponse['hmac'] = ''
+
+        ## Calculate HMAC of HTTP response
+        calculatedResponeHmac = __calculateHmac(httpResponse)
+
+        ## Check if calculated HMAC matches received
+        if ( responseHmac != calculatedResponeHmac ):
+            raise BadHmacSignatureError('The response HMAC signature is not valid!')
+
+        ## Retrieve response data
+        responseOtp = httpResponse['otp']
+        responseNonce = httpResponse['nonce']
+        responseStatus = httpResponse['status']
+        responseTime = httpResponse['time']
+
+    except BadHmacSignatureError as e:
+        __showMessage(pamh, e)
+        return pamh.PAM_AUTH_ERR
+
+    except KeyError:
+        __showMessage(pamh, 'Error while parsing HTTP response!')
+        return pamh.PAM_AUTH_ERR
 
     except:
-        pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Failed to get respone from auth server!'))
+        __showMessage(pamh, 'Error occured: '+ str(sys.exc_info()[1]))
         return pamh.PAM_ABORT
+
 
     ## Check OTP matches public ID
     if ( typedOTP == publicId ):
         auth_log('Access granted!')
-        pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Access granted!'))
+        __showMessage(pamh, 'Access granted!')
         return pamh.PAM_SUCCESS
     else:
         auth_log('The found match is not assigned to user!', syslog.LOG_WARNING)
-        pamh.conversation(pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': Access denied!'))
+        __showMessage(pamh, 'Access denied!')
         return pamh.PAM_AUTH_ERR
 
     ## Denies for default
     return pamh.PAM_AUTH_ERR
+
 
 def pam_sm_setcred(pamh, flags, argv):
     """

@@ -1,10 +1,20 @@
 import http.client
 import json
+import sys
 import hmac, hashlib
 
 server = '127.0.0.1:8080'
 requestTimeout = 3000
 print(server)
+
+
+class BadHmacSignatureError(Exception):
+    """
+    Dummy exception for wrong HMAC.
+
+    """
+    pass
+
 
 def __calculateHmac(data):
     """
@@ -47,10 +57,40 @@ request['hmac'] = __calculateHmac(request)
 
 ## TODO: Check timeout issue
 connection = http.client.HTTPConnection(server, timeout=requestTimeout)
-#headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
 connection.request('GET', '/ardukeyotp/1.0/verify?otp='+ request['otp'] +'&nonce='+ request['nonce'] +'&apiId='+ str(request['apiId']) +'&hmac='+ request['hmac'])
-#connection.request('GET', '/ardukeyotp/1.0/verify', request, headers)
 
 httpResponse = connection.getresponse()
 httpResponseData = httpResponse.read().decode()
+
+try:
+    ## Convert JSON response to Python dict
+    httpResponse = json.loads(httpResponseData)
+
+    ## Save the HMAC
+    responseHmac = httpResponse['hmac']
+
+    ## Exclude response HMAC itself from HMAC calculation
+    httpResponse['hmac'] = ''
+
+    calculatedResponeHmac = __calculateHmac(httpResponse)
+
+    ## Check if calculated HMAC matches received
+    if ( responseHmac != calculatedResponeHmac ):
+        raise BadHmacSignatureError('The response HMAC is not valid!')
+
+    ## Retrieve response data
+    responseOtp = httpResponse['otp']
+    responseNonce = httpResponse['nonce']
+    responseStatus = httpResponse['status']
+    responseTime = httpResponse['time']
+
+except BadHmacSignatureError as e:
+    print(e)
+
+except KeyError:
+    print('Error while parsing HTTP response!')
+
+except:
+    print('Unknown error occured: '+ str(sys.exc_info()[1]))
+
 print(httpResponseData)
