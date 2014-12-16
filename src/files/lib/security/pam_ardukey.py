@@ -10,7 +10,7 @@ All rights reserved.
 """
 
 import sys, syslog
-sys.path.append('/usr/lib')
+sys.path.append('/usr/lib/')
 
 from pamardukey.Config import *
 from pamardukey.version import VERSION
@@ -200,7 +200,6 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     ## Error occured?
     if ( requestError == True ):
-        ## TODO: if auth server is not available
         showPAMTextMessage(pamh, 'Connection to auth server failed!')
         return pamh.PAM_ABORT
 
@@ -244,7 +243,7 @@ def pam_sm_authenticate(pamh, flags, argv):
 
 
     ## Check OTP matches public ID
-    if ( typedOTP == publicId ):
+    if ( typedOTP[0:12] == publicId ):
         auth_log('Access granted!')
         showPAMTextMessage(pamh, 'Access granted!')
         return pamh.PAM_SUCCESS
