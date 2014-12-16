@@ -210,24 +210,27 @@ def pam_sm_authenticate(pamh, flags, argv):
         ## Convert JSON response to Python dict
         httpResponse = json.loads(httpResponseData)
 
+        ## Retrieve response data
+        ## TODO: Escape input
+        response = {}
+        response['otp'] = httpResponse['otp']
+        response['nonce'] = httpResponse['nonce']
+        response['status'] = httpResponse['status']
+        response['time'] = httpResponse['time']
+
         ## Save the HMAC
         responseHmac = httpResponse['hmac']
 
-        ## Exclude response HMAC itself from HMAC calculation
-        httpResponse['hmac'] = ''
-
         ## Calculate HMAC of HTTP response
-        calculatedResponeHmac = calculateHmac(httpResponse, sharedSecret)
+        calculatedResponseHmac = calculateHmac(response, sharedSecret)
 
         ## Check if calculated HMAC matches received
-        if ( responseHmac != calculatedResponeHmac ):
-            raise BadHmacSignatureError('The response HMAC signature is not valid!')
+        if ( responseHmac != calculatedResponseHmac ):
+            raise BadHmacSignatureError('The response Hmac signature is not valid!')
 
-        ## Retrieve response data
-        responseOtp = httpResponse['otp']
-        responseNonce = httpResponse['nonce']
-        responseStatus = httpResponse['status']
-        responseTime = httpResponse['time']
+        ## TODO: Check status
+        ## TODO: Check if otp, nonce is the same as by request
+        ## TODO: Maybe check time?
 
     except BadHmacSignatureError as e:
         showPAMTextMessage(pamh, e)
