@@ -112,12 +112,14 @@ def pam_sm_authenticate(pamh, flags, argv):
         if ( userName == None ):
             userName = pamh.get_user()
 
+        showPAMTextMessage(pamh, 'DEBUG: Requested user: '+ userName)
+
         ## Be sure the user is set
         if ( userName == None ):
             raise Exception('The user is not known!')
 
     except Exception as e:
-        auth_log(e.message, syslog.LOG_CRIT)
+        auth_log('Error occured while trying to get user name: '+ str(e), syslog.LOG_CRIT)
         return pamh.PAM_USER_UNKNOWN
 
     auth_log('The user "' + userName + '" is asking for permission for service "' + str(pamh.service) + '".', syslog.LOG_DEBUG)
@@ -136,11 +138,16 @@ def pam_sm_authenticate(pamh, flags, argv):
             raise Exception('Public_id must not be empty!')
 
     except Exception as e:
-        auth_log(e.message, syslog.LOG_ERR)
+        auth_log('Error occured while parsing mapping file: '+ str(e), syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
     typedOTP = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON, 'Please connect ArduKey and press button...'))
     typedOTP = typedOTP.resp
+
+    if ( len(typedOTP) == 0 ):
+        auth_log('No ArduKey OTP was typed! Please check your ArduKey.')
+        showPAMTextMessage(pamh, 'No ArduKey OTP was typed! Please check your ArduKey.')
+        return pamh.PAM_ABORT
 
     ## Get the config file via PAM argument
     equal = argv[1].index('=')
@@ -150,23 +157,32 @@ def pam_sm_authenticate(pamh, flags, argv):
     else:
         configFile = '/etc/pam-ardukey.conf'
 
-    ## Tries to init Config
     try:
+        ## Tries to init Config
         globalConfig = Config(configFile)
 
-    except Exception as e:
-        auth_log(e.message, syslog.LOG_CRIT)
-        return pamh.PAM_IGNORE
-
-    ## Try to connect to auth server
-    try:
+        ## Try to get server connection data
         servers = globalConfig.readList('pam-ardukey', 'servers')
         requestTimeout = globalConfig.readInteger('pam-ardukey', 'timeout')
         apiId = globalConfig.readInteger('pam-ardukey', 'apiId')
         sharedSecret = globalConfig.readString('pam-ardukey', 'sharedSecret')
 
+        ## Check emptiness of servers
+        if ( len(servers) == 0 ):
+            raise ValueError('No value for attribute "servers"!')
+
+        ## TODO: Check timeout
+
+        ## Check API id
+        if ( apiId <= 0 ):
+            raise ValueError('No valid value for attribute "apiId"!')
+
+        ## Check shared secret
+        if ( len(sharedSecret) == 0):
+            raise ValueError('No value for attribute "sharedSecret"!')
+
     except Exception as e:
-        auth_log(e.message, syslog.LOG_ERR)
+        auth_log('Error occured while reading config file "'+ configFile +'": '+ str(e), syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
     nonce = ''
@@ -176,10 +192,10 @@ def pam_sm_authenticate(pamh, flags, argv):
         chars = random.SystemRandom().choice(string.ascii_uppercase + string.digits)
         nonce = nonce + ''.join(chars)
 
-    print('OTP: '+ typedOTP)
-    print('nonce: '+ nonce)
-    print('apiId: '+ str(apiId))
-    print('sharedSecret: '+ sharedSecret)
+    print('DEBUG: OTP: '+ typedOTP)
+    print('DEBUG: nonce: '+ nonce)
+    print('DEBUG: apiId: '+ str(apiId))
+    print('DEBUG: sharedSecret: '+ sharedSecret)
 
     ## Set up request
     request = {}
@@ -189,7 +205,6 @@ def pam_sm_authenticate(pamh, flags, argv):
     request['hmac'] = calculateHmac(request, sharedSecret)
 
     for server in servers:
-        print(server)
         try:
             ## TODO: Check timeout issue
             ## Start connection to auth server
@@ -202,6 +217,8 @@ def pam_sm_authenticate(pamh, flags, argv):
             httpResponse = connection.getresponse()
             httpResponseData = httpResponse.read().decode()
             requestError = False
+
+            print('DEBUG: Requested auth server: '+ server)
             break
 
         except:
@@ -238,19 +255,6 @@ def pam_sm_authenticate(pamh, flags, argv):
         if ( responseHmac != calculatedResponseHmac ):
             raise BadHmacSignatureError('The response Hmac signature is not valid!')
 
-        ## Check status
-        if ( response['status'] != 'OK' ):
-            raise Exception(response['status'])
-
-        ## Check if otp, nonce is the same as by request
-        if ( request['nonce'] != response['nonce'] ):
-            raise Exception('Nonce of response differs from request!')
-
-        if ( response['otp'] != request['otp'] ):
-            raise Exception('OTP of response differs from request!')
-
-        ## TODO: Maybe check time?
-
     except BadHmacSignatureError as e:
         showPAMTextMessage(pamh, e)
         return pamh.PAM_AUTH_ERR
@@ -259,18 +263,38 @@ def pam_sm_authenticate(pamh, flags, argv):
         showPAMTextMessage(pamh, 'Error while parsing HTTP response!')
         return pamh.PAM_AUTH_ERR
 
-    except:
-        showPAMTextMessage(pamh, 'Error occured: '+ str(sys.exc_info()[1]))
+    except Exception as e:
+        showPAMTextMessage(pamh, 'Unknown error occured: '+ str(e))
         return pamh.PAM_ABORT
 
 
+    ## Check if nonce is the same as by request
+    if ( request['nonce'] != response['nonce'] ):
+        auth_log('Nonce of response differs from request!', syslog.LOG_ERR)
+        showPAMTextMessage(pamh, 'Access denied!')
+        return pamh.PAM_AUTH_ERR
+
+    ## Check if OTP is the same as by request
+    if ( response['otp'] != request['otp'] ):
+        auth_log('OTP of response differs from request!', syslog.LOG_ERR)
+        showPAMTextMessage(pamh, 'Access denied!')
+        return pamh.PAM_AUTH_ERR
+
     ## Check OTP matches public ID
-    if ( typedOTP[0:12] == publicId ):
+    if ( typedOTP[0:12] != publicId ):
+        auth_log('The found match is not assigned to user!', syslog.LOG_WARNING)
+        showPAMTextMessage(pamh, 'Access denied!')
+        return pamh.PAM_AUTH_ERR
+
+    ## TODO: Maybe check time?
+
+    ## Grand access only on status "OK"
+    if ( response['status'] == 'OK' ):
         auth_log('Access granted!')
         showPAMTextMessage(pamh, 'Access granted!')
         return pamh.PAM_SUCCESS
     else:
-        auth_log('The found match is not assigned to user!', syslog.LOG_WARNING)
+        auth_log('Auth server denied access (status: '+ response['status'] +')', syslog.LOG_ERR)
         showPAMTextMessage(pamh, 'Access denied!')
         return pamh.PAM_AUTH_ERR
 
