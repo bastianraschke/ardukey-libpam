@@ -20,6 +20,16 @@ import json
 import random, string
 import hmac, hashlib
 
+
+class BadHmacSignatureError(Exception):
+    """
+    Dummy exception class for bad Hmac signature check.
+
+    """
+
+    pass
+
+
 def calculateHmac(data, sharedSecret):
     """
     Calculates a hexadecimal Hmac of given data dictionary.
@@ -228,8 +238,17 @@ def pam_sm_authenticate(pamh, flags, argv):
         if ( responseHmac != calculatedResponseHmac ):
             raise BadHmacSignatureError('The response Hmac signature is not valid!')
 
-        ## TODO: Check status
-        ## TODO: Check if otp, nonce is the same as by request
+        ## Check status
+        if ( response['status'] != 'OK' ):
+            raise Exception(response['status'])
+
+        ## Check if otp, nonce is the same as by request
+        if ( request['nonce'] != response['nonce'] ):
+            raise Exception('Nonce of response differs from request!')
+
+        if ( response['otp'] != request['otp'] ):
+            raise Exception('OTP of response differs from request!')
+
         ## TODO: Maybe check time?
 
     except BadHmacSignatureError as e:
