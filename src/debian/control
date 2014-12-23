@@ -10,6 +10,3 @@ Depends: python (>= 2.7), libpam-python, ${misc:Depends}
 Architecture: all
 Homepage: https://sicherheitskritisch.de
 Description: Pluggable Authentication Module for 2FA with ArduKey
-  Lorem ipsom
-  .
-  Lorem ipsom

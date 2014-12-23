@@ -1,0 +1,5 @@
+- config file writer: do not write everytime
+- write README file
+- Check init.d script
+- Security revision @ Nils
+- Create database admin tool
