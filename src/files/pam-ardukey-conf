@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+
+"""
+ArduKey 2FA
+PAM configuration program.
+
+Copyright 2014 Bastian Raschke.
+All rights reserved.
+"""
+
+#import hashlib
+
+
+class PAMArduKeyConfiguration(object):
+    """
+    Configuration program.
+
+    """
+
+    def __init__(self):
+        """
+        Constructor
+
+        """
+
+        pass
+
+
+    def __showConfirmationDialog(self, question = ''):
+        """
+        Shows confirmation dialog.
+
+        @param string question
+        @return boolean
+        """
+
+        answer = raw_input(question + ' (Y/n)')
+
+        if ( answer not in ['y', 'Y', ''] ):
+            return False
+        else:
+            return True
+
+    def addUser(self, userName):
+        """
+        Enrolls new fingerprint template and adds user to pamfingerprint.
+
+        @param string userName
+        @return boolean
+        """
+
+        ## Confirmation dialog
+        if ( self.__showConfirmationDialog('Are you sure you want to add the user "' + userName + '"?') == False ):
+            print('Adding user canceled.')
+            return False
+
+        return True
+
+    def removeUser(self, userName):
+        """
+        Removes fingerprint template from sensor and removes user from configuration.
+
+        @param string userName
+        @return boolean
+        """
+
+        ## Confirmation dialog
+        if ( self.__showConfirmationDialog('Are you sure you want to remove the user "' + userName + '"?') == False ):
+            print('Removing user canceled.')
+            return False
+
+        return True
+
+
+if ( __name__ == '__main__' ):
+
+    parser = argparse.ArgumentParser(description = 'PAM ArduKey configuration program:')
+
+    parser.add_argument('--add-user', metavar='NAME', help='Adds a new user.')
+    parser.add_argument('--remove-user', metavar='NAME', help='Removes a user.')
+    parser.add_argument('--version', '-v', action='version', version='pam-ardukey '+ VERSION, help='Prints version and exits.')
+
+    args = vars(parser.parse_args())
+
+    if ( args['add_user'] ):
+        PamFingerprint().addUser(args['add_user'])
+    elif ( args['remove_user'] ):
+        PamFingerprint().removeUser(args['remove_user'])
+    else:
+        parser.print_help()

@@ -256,7 +256,7 @@ def pam_sm_authenticate(pamh, flags, argv):
             raise BadHmacSignatureError('The response Hmac signature is not valid!')
 
     except BadHmacSignatureError as e:
-        showPAMTextMessage(pamh, e)
+        showPAMTextMessage(pamh, str(e))
         return pamh.PAM_AUTH_ERR
 
     except KeyError:
