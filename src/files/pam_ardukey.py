@@ -10,15 +10,11 @@ All rights reserved.
 """
 
 import sys, syslog
-sys.path.append('/usr/lib/')
-
-from pamardukey.Config import *
-from pamardukey.version import VERSION
-
 import httplib
 import json
 import random, string
 import hmac, hashlib
+import pamardukey.Config
 
 
 class BadHmacSignatureError(Exception):
