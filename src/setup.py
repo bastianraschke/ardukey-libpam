@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 from distutils.core import setup
 
 setup(
-    name            = 'libpam-ardukey',
+    name            = 'PAM ArduKey',
     version         = '1.0',
-    description     = 'ArduKey authentication server for 2FA written in Python 3.',
+    description     = 'Pluggable Authentication Module for 2FA with ArduKey',
     author          = 'Philipp Meisberger',
     author_email    = 'p.meisberger@posteo.de',
     url             = 'https://sicherheitskritisch.de',
