@@ -3,10 +3,10 @@ Maintainer: Bastian Raschke <bastian.raschke@posteo.de>
 Section: admin
 Priority: optional
 Standards-Version: 3.9.4
-Build-Depends: debhelper (>= 9), python, python-setuptools
+Build-Depends: debhelper (>= 9), python, python-setuptools, bash-completion
 
 Package: libpam-ardukey
-Depends: python (>= 2.7), libpam-python, ${python:Depends}, ${misc:Depends}
+Depends: python (>= 2.7), libpam-python, bash-completion, ${python:Depends}, ${misc:Depends}
 Architecture: all
 Homepage: https://sicherheitskritisch.de
 Description: Pluggable Authentication Module for 2FA with ArduKey

@@ -1,4 +1,3 @@
-usr/lib/python3/*-packages/*
 debian/pam-auth-update/ardukey usr/share/pam-configs
 files/pam_ardukey.py lib/security
 files/pam-ardukey-conf usr/bin
