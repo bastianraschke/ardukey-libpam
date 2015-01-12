@@ -6,5 +6,3 @@ set -e
 pam-auth-update --package --remove ardukey
 
 #DEBHELPER#
-
-exit 0

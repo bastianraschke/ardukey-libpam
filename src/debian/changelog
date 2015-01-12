@@ -1,5 +1,5 @@
 libpam-ardukey (1.0) unstable; urgency=low
 
-  * Initial release
+  * Initial release (Closes: #123456)
 
  -- Bastian Raschke <bastian.raschke@posteo.de>  Tue, 18 Nov 2014 11:12:09 +0200

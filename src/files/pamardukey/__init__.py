@@ -11,6 +11,6 @@ All rights reserved.
 
 __version__ = '1.0'
 __copyright__ = 'Philipp Meisberger'
-__organization__ = 'Bastian Raschke'
+__organization__ = 'Philipp Meisberger'
 __license__ = 'Simplified BSD License'
 __authors__ = ['Philipp Meisberger']

@@ -1,15 +1,22 @@
 Source: libpam-ardukey
-Maintainer: Bastian Raschke <bastian.raschke@posteo.de>
+Maintainer: Philipp Meisberger <team@pm-codeworks.de>
 Section: admin
 Priority: optional
 Standards-Version: 3.9.4
-Build-Depends: debhelper (>= 9), python, python-setuptools, bash-completion
+Build-Depends: debhelper (>= 9),
+               python (>= 2.7),
+               python-setuptools,
+               bash-completion
+Homepage: http://www.pm-codeworks.de
 
 Package: libpam-ardukey
-Depends: python (>= 2.7), libpam-python, bash-completion, ${python:Depends}, ${misc:Depends}
 Architecture: all
+Depends: python (>= 2.7),
+         libpam-python,
+         bash-completion,
+         ${python:Depends}, ${misc:Depends}
 Homepage: https://sicherheitskritisch.de
-Description: Pluggable Authentication Module for 2FA with ArduKey
- Pluggable Authentication Module for 2FA with ArduKey
+Description: Pluggable Authentication Module for 2FA with ArduKey.
+ Lorem ipsum
  .
- Lorem
+ dolor sit amet
