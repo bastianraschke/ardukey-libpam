@@ -3,7 +3,7 @@
 set -e
 
 ## Adds PAM configuration to "/etc/pam.d/common-auth":
-pam-auth-update --package
+pam-auth-update --package ardukey
 
 #DEBHELPER#
 

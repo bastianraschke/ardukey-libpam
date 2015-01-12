@@ -11,4 +11,5 @@ setup(
     url             = 'https://sicherheitskritisch.de',
     license         = 'Simplified BSD License',
     package_dir     = {'': 'files'},
+    packages        = ['pamardukey'],
 )

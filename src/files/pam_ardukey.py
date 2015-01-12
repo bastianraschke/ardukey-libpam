@@ -1,11 +1,12 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 """
 ArduKey 2FA
 PAM implementation.
 @author Philipp Meisberger, Bastian Raschke
 
-Copyright 2014 Philipp Meisberger, Bastian Raschke.
+Copyright 2015 Philipp Meisberger, Bastian Raschke.
 All rights reserved.
 """
 
@@ -14,7 +15,8 @@ import httplib
 import json
 import random, string
 import hmac, hashlib
-import pamardukey.Config
+from pamardukey import __version__ as VERSION
+from pamardukey.Config import Config
 
 
 class BadHmacSignatureError(Exception):

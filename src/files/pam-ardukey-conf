@@ -1,30 +1,26 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 """
 ArduKey 2FA
 PAM configuration program.
 
-Copyright 2014 Bastian Raschke.
+Copyright 2015 Philipp Meisberger, Bastian Raschke.
 All rights reserved.
 """
 
-#import hashlib
+from pamardukey import __version__ as VERSION
+from pamardukey.Config import Config
 
 
 class PAMArduKeyConfiguration(object):
     """
     Configuration program.
 
+    The ConfigParser instance.
+    @var ConfigParser
     """
-
-    def __init__(self):
-        """
-        Constructor
-
-        """
-
-        pass
-
+    __mappingFile = None
 
     def __showConfirmationDialog(self, question = ''):
         """
@@ -43,7 +39,7 @@ class PAMArduKeyConfiguration(object):
 
     def addUser(self, userName):
         """
-        Enrolls new fingerprint template and adds user to pamfingerprint.
+        Adds a new user to PAM ArduKey.
 
         @param string userName
         @return boolean
@@ -54,11 +50,36 @@ class PAMArduKeyConfiguration(object):
             print('Adding user canceled.')
             return False
 
+        ## Users can only change their own configuration
+        if ( os.getlogin() != userName ):
+            raise Exception('You cannot add another user! Only Root can do that!')
+
+        ## Tries to init mapping file in users home directory
+        try:
+            mappingFile = Config('/home/' + userName + '/.pam-ardukey.mapping')
+
+            ## Public ID exists in mapping file?
+            if ( mappingFile.itemExists('Mapping', 'public_id') ):
+                self.__showConfirmationDialog('Public_id already exists! Do you want to override?') == False ):
+                print('Adding user canceled.')
+                return False
+
+            publicId = raw_input('Please enter your "Public_id": ')
+
+            if ( publicId == '' ):
+                raise Exception('Public_id must not be empty!')
+
+            self.__mappingFile.writeString('Mapping', 'Public_id', publicId)
+
+        except Exception as e:
+            print('Error occured while parsing mapping file: '+ str(e))
+            return False
+
         return True
 
     def removeUser(self, userName):
         """
-        Removes fingerprint template from sensor and removes user from configuration.
+        Removes user from configuration.
 
         @param string userName
         @return boolean
@@ -68,6 +89,10 @@ class PAMArduKeyConfiguration(object):
         if ( self.__showConfirmationDialog('Are you sure you want to remove the user "' + userName + '"?') == False ):
             print('Removing user canceled.')
             return False
+
+        ## Users can only change their own configuration
+        if ( os.getlogin() != userName ):
+            raise Exception('You cannot add another user! Only Root can do that!')
 
         return True
 
