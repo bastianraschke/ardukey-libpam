@@ -1,0 +1,132 @@
+'\" t
+.\"     Title: ykpamcfg
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: Version 2.17
+.\"    Manual: Yubico PAM Module Manual
+.\"    Source: yubico-pam
+.\"  Language: English
+.\"
+.TH "YKPAMCFG" "1" "Version 2\&.17" "yubico\-pam" "Yubico PAM Module Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ykpamcfg \- Manage user settings for the Yubico PAM module
+.SH "SYNOPSIS"
+.sp
+\fBykmapcfg\fR [\-1 | \-2] [\-A] [\-p] [\-i] [\-v] [\-h]
+.SH "OPTIONS"
+.PP
+\fB\-1\fR
+.RS 4
+use slot 1\&. This is the default\&.
+.RE
+.PP
+\fB\-2\fR
+.RS 4
+use slot 2\&.
+.RE
+.PP
+\fB\-A\fR \fIaction\fR
+.RS 4
+choose action to perform\&. See ACTIONS below\&.
+.RE
+.PP
+\fB\-p\fR \fIpath\fR
+.RS 4
+specify output file for, default is ~/\&.yubico/challenge
+.RE
+.PP
+\fB\-i\fR \fIiterations\fR
+.RS 4
+number of iterations to use for pbkdf2 of expected response
+.RE
+.PP
+\fB\-v\fR
+.RS 4
+enable verbose mode\&.
+.RE
+.SH "ACTIONS"
+.SS "add_hmac_chalresp"
+.sp
+The PAM module can utilize the HMAC\-SHA1 Challenge\-Response mode found in YubiKeys starting with version 2\&.2 for \fBoffline authentication\fR\&. This action creates the initial state information with the C/R to be issued at the next logon\&.
+.sp
+The utility currently outputs the state information to a file in the current user\(cqs home directory (\fI~/\&.yubico/challenge\-123456\fR for a YubiKey with serial number API readout enabled, and \fI~/\&.yubico/challenge\fR for one without)\&.
+.sp
+The PAM module supports a system wide directory for these state files (in case the user\(cqs home directories are encrypted), but in a system wide directory, the \fIchallenge\fR part should be replaced with the username\&. Example : \fI/var/yubico/challenges/alice\-123456\fR\&.
+.sp
+To use the system\-wide mode, you currently have to move the generated state files manually and configure the PAM module accordingly\&.
+.SH "EXAMPLES"
+.sp
+First, program a YubiKey for challenge response on Slot 2 :
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ ykpersonalize \-2 \-ochal\-resp \-ochal\-hmac \-ohmac\-lt64 \-oserial\-api\-visible
+\&.\&.\&.
+Commit? (y/n) [n]: y
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Now, set the current user to require this YubiKey for logon :
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$ ykpamcfg \-2 \-v
+\&.\&.\&.
+Stored initial challenge and expected response in \*(Aq/home/alice/\&.yubico/challenge\-123456\*(Aq\&.
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Then, configure authentication with PAM for example like this (\fImake a backup first\fR) :
+.sp
+\fI/etc/pam\&.d/common\-auth\fR (from Ubuntu 10\&.10) :
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+auth  required        pam_unix\&.so nullok_secure try_first_pass
+auth  [success=1 new_authtok_reqd=ok ignore=ignore default=die] pam_yubico\&.so mode=challenge\-response
+auth  requisite       pam_deny\&.so
+auth  required        pam_permit\&.so
+auth  optional        pam_ecryptfs\&.so unwrap
+.fi
+.if n \{\
+.RE
+.\}
+.SH "BUGS"
+.sp
+Report ykpamcfg bugs in the issue tracker: https://github\&.com/Yubico/yubico\-pam/issues
+.SH "SEE ALSO"
+.sp
+\fBpam_yubico\fR(8)
+.sp
+The yubico\-pam home page: https://developers\&.yubico\&.com/yubico\-pam/
+.sp
+YubiKeys can be obtained from Yubico: http://www\&.yubico\&.com/

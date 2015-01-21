@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@ --parallel --with autoreconf --builddirectory=build
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		--disable-silent-rules \
+		--with-pam-dir=$(DESTDIR)/lib/security \
+		--includedir=/usr/include/libpam-yubico
+
+override_dh_install:
+	install -D -m 0644 debian/pam-auth-update \
+		debian/libpam-yubico/usr/share/libpam-yubico/pam-auth-update.template
+	chrpath -d debian/libpam-yubico/usr/bin/ykpamcfg
+	chrpath -d debian/libpam-yubico/lib/security/pam_yubico.so
+	rm debian/libpam-yubico/lib/security/pam_yubico.la
+	rm -rf debian/libpam-yubico/usr/include
+	dh_install --fail-missing

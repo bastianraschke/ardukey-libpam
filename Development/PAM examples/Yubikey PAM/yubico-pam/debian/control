@@ -1,0 +1,41 @@
+Source: yubico-pam
+Maintainer: Debian Authentication Maintainers <pkg-auth-maintainers@lists.alioth.debian.org>
+Uploaders: Simon Josefsson <simon@josefsson.org>, Klas Lindfors <klas@yubico.com>, Dain Nilsson <dain@yubico.com>
+Section: admin
+Priority: optional
+Build-Depends: debhelper (>= 9),
+	       po-debconf,
+	       autotools-dev,
+	       dh-autoreconf,
+	       chrpath,
+	       pkg-config,
+	       libykclient-dev (>= 2.12),
+	       libpam0g-dev,
+	       libldap2-dev,
+	       libykpers-1-dev (>= 1.5.2),
+	       libyubikey-dev
+Standards-Version: 3.9.6
+Homepage: https://developers.yubico.com/yubico-pam/
+Vcs-Browser: https://github.com/Yubico/yubico-pam-dpkg
+Vcs-Git: git://github.com/Yubico/yubico-pam-dpkg.git
+
+Package: libpam-yubico
+Architecture: any
+Depends: libpam-runtime (>= 1.0.1-6~),
+	 libykclient3 (>= 2.4),
+	 libldap-2.4-2,
+	 libykpers-1-1 (>= 1.5.2),
+	 debconf | debconf-2.0,
+	 ${shlibs:Depends},
+	 ${misc:Depends}
+Description: two-factor password and YubiKey OTP PAM module
+ This package provides the Yubico PAM module. It enables the use of
+ two-factor authentication, with existing logins and passwords plus
+ a YubiKey One-Time Password that is validated against an online
+ validation service. The default is the free YubiCloud, but it is easy
+ to set up a custom service.
+ .
+ A second mode of operation is available using the YubiKey's HMAC-SHA-1
+ Challenge-Response functionality. This allows for offline validation
+ using a YubiKey, for example on a laptop computer. However, this only
+ works for local logins, not for instance SSH logins.

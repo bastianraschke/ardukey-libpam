@@ -26,26 +26,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-SUBDIRS = . tests
-
 ACLOCAL_AMFLAGS = -I m4
 
 AM_CFLAGS = $(WARN_CFLAGS)
-AM_CPPFLAGS = @YKPERS_CFLAGS@
 
 libdir = $(PAMDIR)
 
 lib_LTLIBRARIES = pam_yubico.la
 
-pam_yubico_la_SOURCES = pam_yubico.c drop_privs.h drop_privs.c
+pam_yubico_la_SOURCES = pam_yubico.c util.h util.c drop_privs.h drop_privs.c
 # XXX add -Wl,-x too?  PAM documentation suggests it.
-pam_yubico_la_LIBADD = @LTLIBYUBIKEY@ @LTLIBYKCLIENT@ @LIBLDAP@ -lpam
-pam_yubico_la_LIBADD += libpam_util.la
+pam_yubico_la_LIBADD = @LTLIBYKCLIENT@ @LIBLDAP@ @YKPERS_LIBS@ @LTLIBYUBIKEY@ -lpam
 pam_yubico_la_LDFLAGS = -module -avoid-version
-
-noinst_LTLIBRARIES = libpam_util.la
-libpam_util_la_SOURCES = util.c util.h
-libpam_util_la_LIBADD = @LTLIBYUBIKEY@ @YKPERS_LIBS@
+pam_yubico_la_CPPFLAGS = @YKPERS_CFLAGS@
 
 DEFS = -DDEBUG_PAM -DPAM_DEBUG @DEFS@
 
@@ -55,8 +48,9 @@ if YKPERS
 bin_PROGRAMS = ykpamcfg
 endif
 
-ykpamcfg_SOURCES = ykpamcfg.c
-ykpamcfg_LDADD = libpam_util.la
+ykpamcfg_SOURCES = ykpamcfg.c util.c
+ykpamcfg_LDADD = @LTLIBYKCLIENT@ @YKPERS_LIBS@ @LTLIBYUBIKEY@
+ykpamcfg_CPPFLAGS = @YKPERS_CFLAGS@
 
 if YKPERS
 dist_man1_MANS = ykpamcfg.1
@@ -64,6 +58,14 @@ endif
 
 dist_man8_MANS = pam_yubico.8
 DISTCLEANFILES = $(dist_man1_MANS) $(dist_man8_MANS)
+
+# Self tests.
+
+AM_LDFLAGS = -no-install
+LDADD = ./pam_yubico.la
+
+check_PROGRAMS = test
+TESTS = $(check_PROGRAMS)
 
 MANSOURCES = pam_yubico.8.txt ykpamcfg.1.txt
 EXTRA_DIST = doc/LocalAuthenticationUsingChallengeResponse.txt doc/MacOSXChallengeResponse.txt doc/TwoFactorPAMConfiguration.txt doc/UbuntuFreeRadiusYubiKey.txt doc/YubiKeyAndFreeRADIUSviaPAM.txt doc/YubiKeyAndFreeRADIUSwithsinglefactorauthenticationviaPAM.txt doc/YubiKeyAndOpenVPNviaPAM.txt doc/YubikeyAndRadiusViaPAM.txt doc/Yubikey-and-SELinux-on-Fedora-18-and-up.txt doc/YubikeyAndSSHViaPAM.txt

@@ -26,7 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-AC_INIT([pam_yubico], [2.18], [yubico-devel@googlegroups.com])
+AC_INIT([pam_yubico], [2.17], [yubico-devel@googlegroups.com])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([1.11 foreign -Wall -Werror])
@@ -136,7 +136,6 @@ fi
 
 
 AC_CONFIG_FILES(Makefile)
-AC_CONFIG_FILES(tests/Makefile)
 AC_OUTPUT
 
 AC_MSG_NOTICE([Summary of build options:
