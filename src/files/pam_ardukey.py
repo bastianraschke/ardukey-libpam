@@ -10,7 +10,7 @@ Copyright 2015 Philipp Meisberger, Bastian Raschke.
 All rights reserved.
 """
 
-import sys, syslog
+import os, sys, syslog
 import httplib
 import json
 import random, string
@@ -125,7 +125,7 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     ## Tries to init mapping file in users home directory
     try:
-        mappingFile = Config('/home/' + userName + '/.pam-ardukey.mapping')
+        mappingFile = Config(os.getenv('HOME') + '/.pam-ardukey.mapping')
 
         ## Public ID exists in mapping file?
         if ( mappingFile.itemExists('Mapping', 'public_id') == False ):
