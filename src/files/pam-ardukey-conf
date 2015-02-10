@@ -2,115 +2,136 @@
 # -*- coding: utf-8 -*-
 
 """
-ArduKey 2FA
-PAM configuration program.
+PAM ArduKey configuration program
 
-Copyright 2015 Philipp Meisberger, Bastian Raschke.
+Copyright 2015 Philipp Meisberger <p.meisberger@posteo.de>,
+               Bastian Raschke <bastian.raschke@posteo.de>
 All rights reserved.
 """
 
 import os
+
 from pamardukey import __version__ as VERSION
 from pamardukey.Config import Config
 
 
-class PAMArduKeyConfiguration(object):
+def showConfirmationDialog(question = ''):
     """
-    Configuration program.
+    Show confirmation dialog.
 
-    The ConfigParser instance.
-    @var ConfigParser
+    @param string question
+    @return boolean
     """
-    __mappingFile = None
 
-    def __showConfirmationDialog(self, question = ''):
-        """
-        Shows confirmation dialog.
+    answer = raw_input(question + ' (Y/n)')
 
-        @param string question
-        @return boolean
-        """
+    if ( answer not in ['y', 'Y', ''] ):
+        return False
+    else:
+        return True
 
-        answer = raw_input(question + ' (Y/n)')
+def addUser(userName):
+    """
+    Add a new user to PAM ArduKey.
 
-        if ( answer not in ['y', 'Y', ''] ):
-            return False
-        else:
-            return True
+    @param string userName
+    @return boolean
+    """
 
-    def addUser(self, userName):
-        """
-        Adds a new user to PAM ArduKey.
+    ## Confirmation dialog
+    if ( showConfirmationDialog('Are you sure you want to add the user "' + userName + '"?') == False ):
+        print('Adding user canceled.')
+        return False
 
-        @param string userName
-        @return boolean
-        """
+    ## Users can only change their own configuration
+    ## TODO: root is not able to change users config yet
+    if ( os.getlogin() != userName ):
+        raise Exception('You cannot add another user! Only Root can do that!')
 
-        ## Confirmation dialog
-        if ( self.__showConfirmationDialog('Are you sure you want to add the user "' + userName + '"?') == False ):
+    ## Tries to init mapping file in users home directory
+    try:
+        mappingFile = Config(os.getenv('HOME') + '/.pam-ardukey.mapping')
+
+        ## Public ID exists in mapping file?
+        if ( mappingFile.itemExists('Mapping', 'public_id') ):
+            showConfirmationDialog('Public_id already exists! Do you want to override?') == False ):
             print('Adding user canceled.')
             return False
 
-        ## Users can only change their own configuration
-        if ( os.getlogin() != userName ):
-            raise Exception('You cannot add another user! Only Root can do that!')
+        publicId = raw_input('Please enter your "Public_id": ')
 
-        ## Tries to init mapping file in users home directory
-        try:
-            mappingFile = Config(os.getenv('HOME') + '/.pam-ardukey.mapping')
+        if ( publicId == '' ):
+            raise Exception('Public_id must not be empty!')
 
-            ## Public ID exists in mapping file?
-            if ( mappingFile.itemExists('Mapping', 'public_id') ):
-                self.__showConfirmationDialog('Public_id already exists! Do you want to override?') == False ):
-                print('Adding user canceled.')
-                return False
+        mappingFile.writeString('Mapping', 'Public_id', publicId)
 
-            publicId = raw_input('Please enter your "Public_id": ')
+    except Exception as e:
+        print('Error occured while parsing mapping file: '+ str(e))
+        return False
 
-            if ( publicId == '' ):
-                raise Exception('Public_id must not be empty!')
+    return True
 
-            self.__mappingFile.writeString('Mapping', 'Public_id', publicId)
+def removeUser(userName):
+    """
+    Remove user from configuration.
 
-        except Exception as e:
-            print('Error occured while parsing mapping file: '+ str(e))
-            return False
+    @param string userName
+    @return boolean
+    """
 
-        return True
+    ## Confirmation dialog
+    if ( showConfirmationDialog('Are you sure you want to remove the user "' + userName + '"?') == False ):
+        print('Removing user canceled.')
+        return False
 
-    def removeUser(self, userName):
-        """
-        Removes user from configuration.
+    ## Users can only change their own configuration
+    ## TODO: root is not able to change users config yet
+    if ( os.getlogin() != userName ):
+        raise Exception('You cannot add another user! Only Root can do that!')
 
-        @param string userName
-        @return boolean
-        """
+    ## TODO
 
-        ## Confirmation dialog
-        if ( self.__showConfirmationDialog('Are you sure you want to remove the user "' + userName + '"?') == False ):
-            print('Removing user canceled.')
-            return False
-
-        ## Users can only change their own configuration
-        if ( os.getlogin() != userName ):
-            raise Exception('You cannot add another user! Only Root can do that!')
-
-        return True
+    return True
 
 
 if ( __name__ == '__main__' ):
 
-    parser = argparse.ArgumentParser(description = 'PAM ArduKey configuration program:')
+    parser = argparse.ArgumentParser(add_help=True,
+        description='PAM ArduKey configuration program ' + VERSION)
 
-    parser.add_argument('--add-user', metavar='NAME', help='Adds a new user.')
-    parser.add_argument('--remove-user', metavar='NAME', help='Removes a user.')
-    parser.add_argument('--version', '-v', action='version', version='pam-ardukey '+ VERSION, help='Prints version and exits.')
+    parser.add_argument('-v', '--version',
+        action='version',
+        version='PAM ArduKey configuration program ' + VERSION,
+        help='Print version and exit.'
+    )
+
+    parser.add_argument('--add-user',
+        action='store',
+        default=False,
+        required=False,
+        nargs=1,
+        metavar='USERNAME',
+        type=str,
+        help='Adds a new user.'
+    )
+
+    parser.add_argument('--remove-user',
+        action='store',
+        default=False,
+        required=False,
+        nargs=1,
+        metavar='USERNAME',
+        type=str,
+        help='Removes a user.'
+    )
 
     args = vars(parser.parse_args())
 
     if ( args['add_user'] ):
-        PamFingerprint().addUser(args['add_user'])
+        addUser(args['add_user'])
+
     elif ( args['remove_user'] ):
-        PamFingerprint().removeUser(args['remove_user'])
+        removeUser(args['remove_user'])
+
     else:
         parser.print_help()

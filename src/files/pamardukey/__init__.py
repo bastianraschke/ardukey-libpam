@@ -1,15 +1,13 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
-ArduKey PAM implementation
-@author Philipp Meisberger <team@pm-codeworks.de>
+PAM ArduKey
 
-Copyright 2015 Philipp Meisberger
+Copyright 2015 Philipp Meisberger <p.meisberger@posteo.de>
 All rights reserved.
 """
 
-__version__ = '1.0'
 __copyright__ = 'Philipp Meisberger'
 __organization__ = 'Philipp Meisberger'
 __license__ = 'Simplified BSD License'

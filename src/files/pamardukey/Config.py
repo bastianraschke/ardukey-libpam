@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-PAM ArduKey
+ArduKey PAM
 
-Copyright 2015 Philipp Meisberger, Bastian Raschke.
+Copyright 2015 Philipp Meisberger <p.meisberger@posteo.de>,
+               Bastian Raschke <bastian.raschke@posteo.de>
 All rights reserved.
 """
 

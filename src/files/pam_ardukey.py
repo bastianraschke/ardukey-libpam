@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-ArduKey 2FA
-PAM implementation.
-@author Philipp Meisberger, Bastian Raschke
+PAM ArduKey implementation
 
-Copyright 2015 Philipp Meisberger, Bastian Raschke.
+Copyright 2015 Philipp Meisberger <p.meisberger@posteo.de>,
+               Bastian Raschke <bastian.raschke@posteo.de>
 All rights reserved.
 """
 
@@ -16,7 +15,6 @@ import json
 import random, string
 import hmac, hashlib
 
-from pamardukey import __version__ as VERSION
 from pamardukey.Config import Config
 
 
@@ -28,10 +26,9 @@ class BadHmacSignatureError(Exception):
 
     pass
 
-
 def calculateHmac(data, sharedSecret):
     """
-    Calculates a hexadecimal Hmac of given data dictionary.
+    Calculate hmac of given dictionary and return it as a hexadecimal string.
 
     @param dict data
     The dictionary that contains data.
@@ -43,29 +40,31 @@ def calculateHmac(data, sharedSecret):
     if ( type(data) != dict ):
         raise ValueError('The given data is not a dictionary!')
 
-    ## Checks if shared secret is given
+    ## Check if shared secret is given
     if ( len(sharedSecret) == 0 ):
-        raise ValueError('No shared secret given!')
+        raise ValueError('No shared secret given to perform hmac calculation!')
 
-    payloadData = ''
+    dataString = ''
 
-    ## Sort dictionary by key, to calculate the same Hmac always
+    ## Sort dictionary by key, to calculate the same hmac always
     for k in sorted(data):
-        payloadData += str(data[k])
+        dataString += str(data[k])
 
     sharedSecret = sharedSecret.encode('utf-8')
-    payloadData = payloadData.encode('utf-8')
+    dataString = dataString.encode('utf-8')
 
-    ## Calculate HMAC of current response
-    return hmac.new(sharedSecret, msg=payloadData, digestmod=hashlib.sha256).hexdigest()
-
+    ## Calculate hmac of payload
+    return hmac.new(sharedSecret, msg=dataString, digestmod=hashlib.sha256).hexdigest()
 
 def showPAMTextMessage(pamh, message):
     """
     Shows a PAM conversation text info.
 
     @param pamh
+    The PAM handle.
+
     @param string message
+    The message to print.
 
     @return void
     """
@@ -73,24 +72,25 @@ def showPAMTextMessage(pamh, message):
     if ( type(message) != str ):
         raise ValueError('The given parameter is not a string!')
 
-    msg = pamh.Message(pamh.PAM_TEXT_INFO, 'pam-ardukey ' + VERSION + ': '+ message)
+    msg = pamh.Message(pamh.PAM_TEXT_INFO, 'pam_ardukey: ' + message)
     pamh.conversation(msg)
-
 
 def auth_log(message, priority=syslog.LOG_INFO):
     """
     Sends errors to default authentication log
 
     @param string message
+    The message to write to syslog.
+
     @param integer priority
+    The priority of the syslog message.
 
     @return void
     """
 
     syslog.openlog(facility=syslog.LOG_AUTH)
-    syslog.syslog(priority, 'pam_ardukey '+ VERSION + ': '+ message)
+    syslog.syslog(priority, 'pam_ardukey: ' + message)
     syslog.closelog()
-
 
 def pam_sm_authenticate(pamh, flags, argv):
     """
@@ -107,11 +107,8 @@ def pam_sm_authenticate(pamh, flags, argv):
     try:
         userName = pamh.ruser
 
-        ## Fallback
         if ( userName == None ):
             userName = pamh.get_user()
-
-        showPAMTextMessage(pamh, 'DEBUG: Requested user: '+ userName)
 
         ## Be sure the user is set
         if ( userName == None ):
@@ -140,8 +137,8 @@ def pam_sm_authenticate(pamh, flags, argv):
         auth_log('Error occured while parsing mapping file: '+ str(e), syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
-    typedOTP = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON, 'Please connect ArduKey and press button...'))
-    typedOTP = typedOTP.resp
+    typedOTP = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON,
+        'Please connect ArduKey and press button...')).resp
 
     if ( len(typedOTP) == 0 ):
         auth_log('No ArduKey OTP was typed! Please check your ArduKey.')
@@ -184,56 +181,44 @@ def pam_sm_authenticate(pamh, flags, argv):
         auth_log('Error occured while reading config file "'+ configFile +'": '+ str(e), syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
-    nonce = ''
-
     ## Generate random nonce
-    for _ in range(32):
-        chars = random.SystemRandom().choice(string.ascii_uppercase + string.digits)
-        nonce = nonce + ''.join(chars)
+    nonce = ''.join(random.SystemRandom().choice(
+        string.ascii_uppercase + string.digits) for _ in range(32))
 
-    print('DEBUG: OTP: '+ typedOTP)
-    print('DEBUG: nonce: '+ nonce)
-    print('DEBUG: apiId: '+ str(apiId))
-    print('DEBUG: sharedSecret: '+ sharedSecret)
+    request = {
+        'otp': typedOTP,
+        'nonce': nonce,
+        'apiId': apiId,
+    }
 
-    ## Set up request
-    request = {}
-    request['otp'] = typedOTP
-    request['nonce'] = nonce
-    request['apiId'] = apiId
+    ## Calculate request hmac
     request['hmac'] = calculateHmac(request, sharedSecret)
 
+    ## Try connect server by server to be sure one is up
     for server in servers:
         try:
-            ## TODO: Check timeout issue
-            ## Start connection to auth server
             connection = httplib.HTTPConnection(server, timeout=requestTimeout)
 
-            ## Send client auth data
-            connection.request('GET', '/ardukeyotp/1.0/verify?otp='+ request['otp'] +'&nonce='+ request['nonce'] +'&apiId='+ str(request['apiId']) +'&hmac='+ request['hmac'])
+            ## Send request to server
+            connection.request('GET', '/ardukeyotp/1.0/verify?otp=' + request['otp'] + '&nonce=' + request['nonce'] + '&apiId=' + str(request['apiId']) + '&hmac=' + request['hmac'])
 
             ## Receive the response from auth server
-            httpResponse = connection.getresponse()
-            httpResponseData = httpResponse.read().decode()
-            requestError = False
+            httpResponseData = connection.getresponse().read().decode()
 
-            print('DEBUG: Requested auth server: '+ server)
+            requestError = False
             break
 
         except:
             requestError = True
             continue
 
-    ## Error occured?
     if ( requestError == True ):
         showPAMTextMessage(pamh, 'Connection to auth server failed!')
         return pamh.PAM_ABORT
 
-    print(httpResponseData)
-
-    ## Parse JSON response from server
+    ## Try to parse JSON response
     try:
-        ## Convert JSON response to Python dict
+        ## Convert JSON response to dictionary
         httpResponse = json.loads(httpResponseData)
 
         ## Retrieve response data
@@ -244,14 +229,11 @@ def pam_sm_authenticate(pamh, flags, argv):
         response['status'] = httpResponse['status']
         response['time'] = httpResponse['time']
 
-        ## Save the HMAC
-        responseHmac = httpResponse['hmac']
-
-        ## Calculate HMAC of HTTP response
+        ## Calculate HMAC of server response
         calculatedResponseHmac = calculateHmac(response, sharedSecret)
 
         ## Check if calculated HMAC matches received
-        if ( responseHmac != calculatedResponseHmac ):
+        if ( httpResponse['hmac'] != calculatedResponseHmac ):
             raise BadHmacSignatureError('The response Hmac signature is not valid!')
 
     except BadHmacSignatureError as e:
@@ -264,8 +246,7 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     except Exception as e:
         showPAMTextMessage(pamh, 'Unknown error occured: '+ str(e))
-        return pamh.PAM_ABORT
-
+        return pamh.PAM_AUTH_ERR
 
     ## Check if nonce is the same as by request
     if ( request['nonce'] != response['nonce'] ):
@@ -279,15 +260,15 @@ def pam_sm_authenticate(pamh, flags, argv):
         showPAMTextMessage(pamh, 'Access denied!')
         return pamh.PAM_AUTH_ERR
 
-    ## Check OTP matches public ID
+    ## Important: Check if OTP matches public ID
     if ( typedOTP[0:12] != publicId ):
         auth_log('The found match is not assigned to user!', syslog.LOG_WARNING)
         showPAMTextMessage(pamh, 'Access denied!')
         return pamh.PAM_AUTH_ERR
 
-    ## TODO: Maybe check time?
+    ## TODO: Maybe additionally check time?
 
-    ## Grand access only on status "OK"
+    ## Grand access only if the status is good
     if ( response['status'] == 'OK' ):
         auth_log('Access granted!')
         showPAMTextMessage(pamh, 'Access granted!')
@@ -299,7 +280,6 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     ## Denies for default
     return pamh.PAM_AUTH_ERR
-
 
 def pam_sm_setcred(pamh, flags, argv):
     """
