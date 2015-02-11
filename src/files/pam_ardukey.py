@@ -14,6 +14,7 @@ import httplib
 import json
 import random, string
 import hmac, hashlib
+import urllib.parse
 
 from pamardukey import __version__ as VERSION
 from pamardukey.Config import Config
@@ -104,7 +105,7 @@ def pam_sm_authenticate(pamh, flags, argv):
     @return integer
     """
 
-    ## Tries to get user which is asking for permission
+    ## Try to get user which is asking for permission
     try:
         userName = pamh.ruser
 
@@ -116,30 +117,31 @@ def pam_sm_authenticate(pamh, flags, argv):
             raise Exception('The user is not known!')
 
     except Exception as e:
-        auth_log('Error occured while trying to get user name: '+ str(e), syslog.LOG_CRIT)
+        auth_log('Error occured while getting user name: ' + str(e), syslog.LOG_CRIT)
         return pamh.PAM_USER_UNKNOWN
 
-    auth_log('The user "' + userName + '" is asking for permission for service "' + str(pamh.service) + '".', syslog.LOG_DEBUG)
+    auth_log('The user "' + userName + '" is asking for permission ' + \
+        'for service "' + str(pamh.service) + '".', syslog.LOG_DEBUG)
 
-    ## Tries to init mapping file in users home directory
+    ## Try to init mapping file in users home directory
     try:
         mappingFile = Config(os.getenv('HOME') + '/.pam-ardukey.mapping', True)
 
         ## Public ID exists in mapping file?
         if ( mappingFile.itemExists('Mapping', 'public_id') == False ):
-            raise Exception('No "public_id" was specified in mapping file!')
+            raise ValueError('No "public_id" was specified in mapping file!')
 
         publicId = mappingFile.get('Mapping', 'public_id')
 
         if ( publicId == '' ):
-            raise Exception('Public_id must not be empty!')
+            raise ValueError('Public_id must not be empty!')
 
     except Exception as e:
-        auth_log('Error occured while parsing mapping file: '+ str(e), syslog.LOG_ERR)
+        auth_log('Error occured while parsing mapping file "' + configFile + '": ' + str(e), syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
     typedOTP = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON,
-        'Please connect ArduKey and press button...')).resp
+        'Please type ArduKey OTP: ')).resp
 
     if ( len(typedOTP) == 0 ):
         auth_log('No ArduKey OTP was typed! Please check your ArduKey.')
@@ -149,6 +151,7 @@ def pam_sm_authenticate(pamh, flags, argv):
     ## Get the config file via PAM argument
     equal = argv[1].index('=')
 
+    ## TODO: Check if file exists!
     if ( equal != -1 ):
         configFile = argv[1][equal+1:]
     else:
@@ -177,7 +180,7 @@ def pam_sm_authenticate(pamh, flags, argv):
             raise ValueError('No value for attribute "sharedSecret"!')
 
     except Exception as e:
-        auth_log('Error occured while reading config file "'+ configFile +'": '+ str(e), syslog.LOG_ERR)
+        auth_log('Error occured while reading config file "' + configFile + '": ' + str(e), syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
     ## Generate random nonce
@@ -197,7 +200,12 @@ def pam_sm_authenticate(pamh, flags, argv):
             connection = httplib.HTTPConnection(server, timeout=requestTimeout)
 
             ## Send request to server
-            connection.request('GET', '/ardukeyotp/1.0/verify?otp=' + request['otp'] + '&nonce=' + request['nonce'] + '&apiId=' + str(request['apiId']) + '&hmac=' + request['hmac'])
+            connection.request('GET', '/ardukeyotp/1.0/verify?' + \
+                'otp=' + request['otp'] + \
+                '&nonce=' + request['nonce'] + \
+                '&apiId=' + str(request['apiId']) + \
+                '&hmac=' + request['hmac']
+            )
 
             ## Receive the response from auth server
             httpResponseData = connection.getresponse().read().decode()
@@ -210,7 +218,8 @@ def pam_sm_authenticate(pamh, flags, argv):
             continue
 
     if ( requestError == True ):
-        showPAMTextMessage(pamh, 'Connection to auth server failed!')
+        auth_log('The connection to auth server failed!')
+        showPAMTextMessage(pamh, 'The connection to auth server failed!')
         return pamh.PAM_ABORT
 
     ## Try to parse JSON response
@@ -218,52 +227,54 @@ def pam_sm_authenticate(pamh, flags, argv):
         ## Convert JSON response to dictionary
         httpResponse = json.loads(httpResponseData)
 
-        ## Retrieve response data
-        ## TODO: Escape input
-        response = {}
-        response['otp'] = httpResponse['otp']
-        response['nonce'] = httpResponse['nonce']
-        response['status'] = httpResponse['status']
-        response['time'] = httpResponse['time']
+        ## IMPORTANT: This is potential dangerous input from outside,
+        ## so we must handle it very carefully!
+        response = {
+            'otp': urllib.parse.quote(httpResponse['otp']),
+            'nonce': urllib.parse.quote(httpResponse['nonce']),
+            'status': urllib.parse.quote(httpResponse['status']),
+            'time': urllib.parse.quote(httpResponse['time']),
+        }
 
-        ## Calculate HMAC of server response
+        ## Calculate hmac of server response
         calculatedResponseHmac = calculateHmac(response, sharedSecret)
 
-        ## Check if calculated HMAC matches received
+        ## Check if calculated hmac matches received
         if ( httpResponse['hmac'] != calculatedResponseHmac ):
-            raise BadHmacSignatureError('The response Hmac signature is not valid!')
-
-    except BadHmacSignatureError as e:
-        showPAMTextMessage(pamh, str(e))
-        return pamh.PAM_AUTH_ERR
+            raise BadHmacSignatureError()
 
     except KeyError:
-        showPAMTextMessage(pamh, 'Error while parsing HTTP response!')
+        auth_log('The response from auth server is invalid!', syslog.LOG_ERR)
+        showPAMTextMessage(pamh, 'The response from auth server is invalid!')
+        return pamh.PAM_AUTH_ERR
+
+    except BadHmacSignatureError:
+        auth_log('The response signature from auth server is invalid!', syslog.LOG_ERR)
+        showPAMTextMessage(pamh, 'The response signature from auth server is invalid!')
         return pamh.PAM_AUTH_ERR
 
     except Exception as e:
-        showPAMTextMessage(pamh, 'Unknown error occured: '+ str(e))
+        auth_log('Unknown error occured while parsing response: ' + str(e), syslog.LOG_ERR)
+        showPAMTextMessage(pamh, 'Unknown error occured!')
         return pamh.PAM_AUTH_ERR
 
     ## Check if nonce is the same as by request
     if ( request['nonce'] != response['nonce'] ):
-        auth_log('Nonce of response differs from request!', syslog.LOG_ERR)
+        auth_log('Access denied: Nonce of response differs from request!', syslog.LOG_ERR)
         showPAMTextMessage(pamh, 'Access denied!')
         return pamh.PAM_AUTH_ERR
 
     ## Check if OTP is the same as by request
     if ( response['otp'] != request['otp'] ):
-        auth_log('OTP of response differs from request!', syslog.LOG_ERR)
+        auth_log('Access denied: OTP of response differs from request!', syslog.LOG_ERR)
         showPAMTextMessage(pamh, 'Access denied!')
         return pamh.PAM_AUTH_ERR
 
-    ## Important: Check if OTP matches public ID
+    ## IMPORTANT for security: Check if OTP matches public id
     if ( typedOTP[0:12] != publicId ):
-        auth_log('The found match is not assigned to user!', syslog.LOG_WARNING)
+        auth_log('Access denied: The public id "' + typedOTP[0:12] + '" of OTP is not assigned to user!', syslog.LOG_WARNING)
         showPAMTextMessage(pamh, 'Access denied!')
         return pamh.PAM_AUTH_ERR
-
-    ## TODO: Maybe additionally check time?
 
     ## Grand access only if the status is good
     if ( response['status'] == 'OK' ):
@@ -271,7 +282,7 @@ def pam_sm_authenticate(pamh, flags, argv):
         showPAMTextMessage(pamh, 'Access granted!')
         return pamh.PAM_SUCCESS
     else:
-        auth_log('Auth server denied access (status: '+ response['status'] +')', syslog.LOG_ERR)
+        auth_log('Access denied (status code: ' + response['status'] + ')!', syslog.LOG_ERR)
         showPAMTextMessage(pamh, 'Access denied!')
         return pamh.PAM_AUTH_ERR
 

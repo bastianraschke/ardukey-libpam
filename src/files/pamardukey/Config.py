@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-ArduKey PAM
+PAM ArduKey
 
 Copyright 2015 Philipp Meisberger <team@pm-codeworks.de>,
                Bastian Raschke <bastian.raschke@posteo.de>

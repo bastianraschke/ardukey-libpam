@@ -1,10 +1,10 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: PAM ArduKey
 Upstream-Contact: Bastian Raschke <bastian.raschke@posteo.de>
-Source: https://sicherheitskritisch.de
+Source: http://sicherheitskritisch.de
 
 Files: *
-Copyright: Copyright (C) 2015 Philipp Meisberger <p.meisberger@posteo.de>,
+Copyright: Copyright (C) 2015 Philipp Meisberger <team@pm-codeworks.de>,
  Bastian Raschke <bastian.raschke@posteo.de>
 License: Simplified BSD License
  All rights reserved.

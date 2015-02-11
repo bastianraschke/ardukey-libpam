@@ -8,7 +8,7 @@ setup(
     version         = '1.0',
     description     = 'Pluggable Authentication Module for 2FA with ArduKey.',
     author          = 'Philipp Meisberger',
-    author_email    = 'p.meisberger@posteo.de',
+    author_email    = 'team@pm-codeworks.de',
     url             = 'http://www.pm-codeworks.de',
     license         = 'Simplified BSD License',
     package_dir     = {'': 'files'},
