@@ -1,0 +1,18 @@
+## bash completion for pam-ardukey-conf
+##
+
+_pam-ardukey-conf() {
+
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    opts="--add-user --remove-user --help --version"
+
+    if [[ ${cur} == -* ]] ; then
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+}
+
+complete -o plusdirs -F _pam-ardukey-conf pam-ardukey-conf
