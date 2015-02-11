@@ -4,7 +4,7 @@
 """
 PAM ArduKey implementation
 
-Copyright 2015 Philipp Meisberger <p.meisberger@posteo.de>,
+Copyright 2015 Philipp Meisberger <team@pm-codeworks.de>,
                Bastian Raschke <bastian.raschke@posteo.de>
 All rights reserved.
 """
@@ -15,6 +15,7 @@ import json
 import random, string
 import hmac, hashlib
 
+from pamardukey import __version__ as VERSION
 from pamardukey.Config import Config
 
 
@@ -72,7 +73,7 @@ def showPAMTextMessage(pamh, message):
     if ( type(message) != str ):
         raise ValueError('The given parameter is not a string!')
 
-    msg = pamh.Message(pamh.PAM_TEXT_INFO, 'pam_ardukey: ' + message)
+    msg = pamh.Message(pamh.PAM_TEXT_INFO, 'pam_ardukey ' + VERSION + ': ' + message)
     pamh.conversation(msg)
 
 def auth_log(message, priority=syslog.LOG_INFO):
@@ -122,13 +123,13 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     ## Tries to init mapping file in users home directory
     try:
-        mappingFile = Config(os.getenv('HOME') + '/.pam-ardukey.mapping')
+        mappingFile = Config(os.getenv('HOME') + '/.pam-ardukey.mapping', True)
 
         ## Public ID exists in mapping file?
         if ( mappingFile.itemExists('Mapping', 'public_id') == False ):
             raise Exception('No "public_id" was specified in mapping file!')
 
-        publicId = mappingFile.readString('Mapping', 'public_id')
+        publicId = mappingFile.get('Mapping', 'public_id')
 
         if ( publicId == '' ):
             raise Exception('Public_id must not be empty!')
@@ -155,19 +156,17 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     try:
         ## Tries to init Config
-        globalConfig = Config(configFile)
+        globalConfig = Config(configFile, True)
 
         ## Try to get server connection data
         servers = globalConfig.readList('pam-ardukey', 'servers')
-        requestTimeout = globalConfig.readInteger('pam-ardukey', 'timeout')
-        apiId = globalConfig.readInteger('pam-ardukey', 'apiId')
-        sharedSecret = globalConfig.readString('pam-ardukey', 'sharedSecret')
+        requestTimeout = globalConfig.get('pam-ardukey', 'timeout')
+        apiId = globalConfig.get('pam-ardukey', 'apiId')
+        sharedSecret = globalConfig.get('pam-ardukey', 'sharedSecret')
 
         ## Check emptiness of servers
         if ( len(servers) == 0 ):
             raise ValueError('No value for attribute "servers"!')
-
-        ## TODO: Check timeout
 
         ## Check API id
         if ( apiId <= 0 ):
@@ -189,10 +188,8 @@ def pam_sm_authenticate(pamh, flags, argv):
         'otp': typedOTP,
         'nonce': nonce,
         'apiId': apiId,
+        'hmac': calculateHmac(request, sharedSecret)
     }
-
-    ## Calculate request hmac
-    request['hmac'] = calculateHmac(request, sharedSecret)
 
     ## Try connect server by server to be sure one is up
     for server in servers:

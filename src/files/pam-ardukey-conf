@@ -4,7 +4,7 @@
 """
 PAM ArduKey configuration program
 
-Copyright 2015 Philipp Meisberger <p.meisberger@posteo.de>,
+Copyright 2015 Philipp Meisberger <team@pm-codeworks.de>,
                Bastian Raschke <bastian.raschke@posteo.de>
 All rights reserved.
 """
@@ -13,7 +13,7 @@ import os
 
 from pamardukey import __version__ as VERSION
 from pamardukey.Config import Config
-
+from argparse import ArgumentParser
 
 def showConfirmationDialog(question = ''):
     """
@@ -53,7 +53,7 @@ def addUser(userName):
         mappingFile = Config(os.getenv('HOME') + '/.pam-ardukey.mapping')
 
         ## Public ID exists in mapping file?
-        if ( mappingFile.itemExists('Mapping', 'public_id') ):
+        if ( mappingFile.itemExists('Mapping', 'public_id') and
             showConfirmationDialog('Public_id already exists! Do you want to override?') == False ):
             print('Adding user canceled.')
             return False
@@ -63,7 +63,7 @@ def addUser(userName):
         if ( publicId == '' ):
             raise Exception('Public_id must not be empty!')
 
-        mappingFile.writeString('Mapping', 'Public_id', publicId)
+        mappingFile.set('Mapping', 'Public_id', publicId)
 
     except Exception as e:
         print('Error occured while parsing mapping file: '+ str(e))
@@ -96,13 +96,13 @@ def removeUser(userName):
 
 if ( __name__ == '__main__' ):
 
-    parser = argparse.ArgumentParser(add_help=True,
+    parser = ArgumentParser(add_help=True,
         description='PAM ArduKey configuration program ' + VERSION)
 
     parser.add_argument('-v', '--version',
         action='version',
         version='PAM ArduKey configuration program ' + VERSION,
-        help='Print version and exit.'
+        help='Prints version and exit.'
     )
 
     parser.add_argument('--add-user',
@@ -128,10 +128,10 @@ if ( __name__ == '__main__' ):
     args = vars(parser.parse_args())
 
     if ( args['add_user'] ):
-        addUser(args['add_user'])
+        addUser(args['add_user'][0])
 
     elif ( args['remove_user'] ):
-        removeUser(args['remove_user'])
+        removeUser(args['remove_user'][0])
 
     else:
         parser.print_help()

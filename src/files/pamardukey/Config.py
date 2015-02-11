@@ -4,7 +4,7 @@
 """
 ArduKey PAM
 
-Copyright 2015 Philipp Meisberger <p.meisberger@posteo.de>,
+Copyright 2015 Philipp Meisberger <team@pm-codeworks.de>,
                Bastian Raschke <bastian.raschke@posteo.de>
 All rights reserved.
 """
@@ -40,8 +40,12 @@ class Config(object):
         """
 
         # Checks if path/file is readable
-        if ( os.access(configFile, os.R_OK) == False ):
+        if ( readOnly == True and os.access(configFile, os.R_OK) == False ):
             raise Exception('The configuration file "' + configFile + '" is not readable!')
+
+        ## Create file if not exists
+        if ( readOnly == False and not os.path.exists(configFile) ):
+            file(configFile, "w")
 
         self.__configFile = configFile
         self.__readOnly = readOnly
@@ -64,7 +68,7 @@ class Config(object):
         @return boolean
         """
 
-        if ( self.__readOnly == True ):
+        if ( self.__configFile == None ) or ( self.__readOnly == True ):
             return False
 
         # Checks if path/file is writable
@@ -78,7 +82,7 @@ class Config(object):
 
         return False
 
-    def readString(self, section, name):
+    def get(self, section, name):
         """
         Reads a string value.
 
@@ -89,7 +93,7 @@ class Config(object):
 
         return self.__configParser.get(section, name)
 
-    def writeString(self, section, name, value):
+    def set(self, section, name, value):
         """
         Writes a string value.
 
@@ -99,42 +103,11 @@ class Config(object):
         @return void
         """
 
+        ## Create section if not exist
+        if ( self.__configParser.has_section(section) == False ):
+            self.__configParser.add_section(section)
+
         self.__configParser.set(section, name, value)
-
-    def readBoolean(self, section, name):
-        """
-        Reads a boolean value.
-
-        @param string section
-        @param string name
-        @return boolean
-        """
-
-        return self.__configParser.getboolean(section, name)
-
-    def readInteger(self, section, name):
-        """
-        Reads a decimal integer value.
-
-        @param string section
-        @param string name
-        @return integer
-        """
-
-        ## Casts to integer (base 10)
-        return int(self.readString(section, name), 10)
-
-    def readHex(self, section, name):
-        """
-        Reads a hexadecimal integer value.
-
-        @param string section
-        @param string name
-        @return integer
-        """
-
-        ## Casts to integer (base 16)
-        return int(self.readString(section, name), 16)
 
     def readList(self, section, name):
         """
@@ -161,52 +134,13 @@ class Config(object):
         delimiter = ','
         self.__configParser.set(section, name, delimiter.join(value))
 
-    def remove(self, section, name):
-        """
-        Removes a value.
-
-        @param string section
-        @param string name
-        @return boolean
-        """
-
-        return self.__configParser.remove_option(section, name)
-
-    def sectionExists(self, section):
-        """
-        Checks if a given section exists.
-
-        @param string section
-        @return boolean
-        """
-
-        return self.__configParser.has_section(section)
-
     def itemExists(self, section, name):
-        """
-        Checks if an item in a given section exists.
+         """
+         Checks if an item in a given section exists.
 
-        @param string section
-        @param string name
-        @return boolean
-        """
+         @param string section
+         @param string name
+         @return boolean
+         """
 
-        return self.__configParser.has_option(section, name)
-
-    def getSections(self):
-        """
-        Returns all sections as a list.
-
-        @return list
-        """
-
-        return self.__configParser.sections()
-
-    def getItems(self, section):
-        """
-        Returns all items of a sections as a list.
-
-        @return list
-        """
-
-        return self.__configParser.items(section)
+         return self.__configParser.has_option(section, name)
