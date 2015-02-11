@@ -137,14 +137,13 @@ def pam_sm_authenticate(pamh, flags, argv):
             raise ValueError('Public_id must not be empty!')
 
     except Exception as e:
-        auth_log('Error occured while parsing mapping file "' + configFile + '": ' + str(e), syslog.LOG_ERR)
+        auth_log('Error occured while reading mapping file "' + configFile + '": ' + str(e), syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
-    typedOTP = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON,
-        'Please type ArduKey OTP: ')).resp
+    typedOTP = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON, 'Please type ArduKey OTP: ')).resp
 
     if ( len(typedOTP) == 0 ):
-        auth_log('No ArduKey OTP was typed! Please check your ArduKey.')
+        auth_log('No ArduKey OTP was typed!')
         showPAMTextMessage(pamh, 'No ArduKey OTP was typed! Please check your ArduKey.')
         return pamh.PAM_ABORT
 
