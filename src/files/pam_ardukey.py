@@ -123,7 +123,7 @@ def pam_sm_authenticate(pamh, flags, argv):
     auth_log('The user "' + userName + '" is asking for permission ' + \
         'for service "' + str(pamh.service) + '".', syslog.LOG_DEBUG)
 
-    ## Try to init mapping file in users home directory
+    ## Try to read mapping file in users home directory
     try:
         mappingFile = Config(os.getenv('HOME') + '/.pam-ardukey.mapping', True)
 
@@ -137,38 +137,29 @@ def pam_sm_authenticate(pamh, flags, argv):
             raise ValueError('Public_id must not be empty!')
 
     except Exception as e:
-        auth_log('Error occured while reading mapping file "' + configFile + '": ' + str(e), syslog.LOG_ERR)
+        auth_log('Error occured while reading mapping file "' + mappingFile + '": ' + str(e), syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
-    typedOTP = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON, 'Please type ArduKey OTP: ')).resp
+    typedOTP = pamh.conversation(
+        pamh.Message(pamh.PAM_PROMPT_ECHO_ON, 'Please type ArduKey OTP: ')).resp
 
     if ( len(typedOTP) == 0 ):
         auth_log('No ArduKey OTP was typed!')
         showPAMTextMessage(pamh, 'No ArduKey OTP was typed! Please check your ArduKey.')
         return pamh.PAM_ABORT
 
-    ## Get the config file via PAM argument
-    equal = argv[1].index('=')
-
-    ## TODO: Check if file exists!
-    if ( equal != -1 ):
-        configFile = argv[1][equal+1:]
-    else:
-        configFile = '/etc/pam-ardukey.conf'
-
+    ## Try to read global configuration file
     try:
-        ## Tries to init Config
-        globalConfig = Config(configFile, True)
+        configuration = Config('/etc/pam-ardukey.conf', True)
 
-        ## Try to get server connection data
-        servers = globalConfig.readList('pam-ardukey', 'servers')
-        requestTimeout = globalConfig.get('pam-ardukey', 'timeout')
-        apiId = globalConfig.get('pam-ardukey', 'apiId')
-        sharedSecret = globalConfig.get('pam-ardukey', 'sharedSecret')
+        servers = configuration.readList('pam-ardukey', 'servers')
+        requestTimeout = configuration.get('pam-ardukey', 'timeout')
+        apiId = configuration.get('pam-ardukey', 'apiId')
+        sharedSecret = configuration.get('pam-ardukey', 'sharedSecret')
 
         ## Check emptiness of servers
         if ( len(servers) == 0 ):
-            raise ValueError('No value for attribute "servers"!')
+            raise ValueError('Invalid value for attribute "servers"!')
 
         ## Check API id
         if ( apiId <= 0 ):
@@ -179,7 +170,7 @@ def pam_sm_authenticate(pamh, flags, argv):
             raise ValueError('No value for attribute "sharedSecret"!')
 
     except Exception as e:
-        auth_log('Error occured while reading config file "' + configFile + '": ' + str(e), syslog.LOG_ERR)
+        auth_log('Error occured while reading configuration file: ' + str(e), syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
     ## Generate random nonce
@@ -195,6 +186,7 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     ## Try connect server by server to be sure one is up
     for server in servers:
+
         try:
             connection = httplib.HTTPConnection(server, timeout=requestTimeout)
 
