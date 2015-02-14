@@ -10,17 +10,18 @@ All rights reserved.
 """
 
 import os
+from argparse
 
+import pamardukey.configuration as configuration
 from pamardukey import __version__ as VERSION
-from pamardukey.Config import Config
-from argparse import ArgumentParser
+
 
 def showConfirmationDialog(question = ''):
     """
     Show confirmation dialog.
 
     @param string question
-    @return boolean
+    @return bool
     """
 
     answer = raw_input(question + ' (Y/n)')
@@ -35,7 +36,7 @@ def addUser(userName):
     Add a new user to PAM ArduKey.
 
     @param string userName
-    @return boolean
+    @return bool
     """
 
     ## Confirmation dialog
@@ -76,7 +77,7 @@ def removeUser(userName):
     Remove user from configuration.
 
     @param string userName
-    @return boolean
+    @return bool
     """
 
     ## Confirmation dialog
@@ -96,7 +97,7 @@ def removeUser(userName):
 
 if ( __name__ == '__main__' ):
 
-    parser = ArgumentParser(add_help=True,
+    parser = argparse.ArgumentParser(add_help=True,
         description='PAM ArduKey configuration program ' + VERSION)
 
     parser.add_argument('-v', '--version',
@@ -110,7 +111,7 @@ if ( __name__ == '__main__' ):
         default=False,
         required=False,
         nargs=1,
-        metavar='USERNAME',
+        metavar='NAME',
         type=str,
         help='Adds a new user.'
     )
@@ -120,7 +121,7 @@ if ( __name__ == '__main__' ):
         default=False,
         required=False,
         nargs=1,
-        metavar='USERNAME',
+        metavar='NAME',
         type=str,
         help='Removes a user.'
     )

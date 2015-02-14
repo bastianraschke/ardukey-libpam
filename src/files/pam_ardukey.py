@@ -16,8 +16,8 @@ import random, string
 import hmac, hashlib
 import urllib.parse
 
+import pamardukey.configuration as configuration
 from pamardukey import __version__ as VERSION
-from pamardukey.Config import Config
 
 
 class BadHmacSignatureError(Exception):
@@ -35,7 +35,7 @@ def calculateHmac(data, sharedSecret):
     @param dict data
     The dictionary that contains data.
 
-    @return string
+    @return str
     """
 
     ## Only process dictionaries
@@ -65,7 +65,7 @@ def showPAMTextMessage(pamh, message):
     @param pamh
     The PAM handle.
 
-    @param string message
+    @param str message
     The message to print.
 
     @return void
@@ -81,10 +81,10 @@ def auth_log(message, priority=syslog.LOG_INFO):
     """
     Sends errors to default authentication log
 
-    @param string message
+    @param str message
     The message to write to syslog.
 
-    @param integer priority
+    @param int priority
     The priority of the syslog message.
 
     @return void
@@ -102,7 +102,7 @@ def pam_sm_authenticate(pamh, flags, argv):
     @param flags
     @param argv
 
-    @return integer
+    @return int
     """
 
     ## Try to get user which is asking for permission
@@ -125,19 +125,18 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     ## Try to read mapping file in users home directory
     try:
-        mappingFile = Config(os.getenv('HOME') + '/.pam-ardukey.mapping', True)
+        mappingFile = configuration.Configuration()
 
-        ## Public ID exists in mapping file?
-        if ( mappingFile.itemExists('Mapping', 'public_id') == False ):
+        mappingFilePath = os.getenv('HOME') + '/.pam-ardukey.mapping'
+        mappingFile.setFilePath(mappingFilePath)
+
+        publicId = mappingFile.get('public_id')
+
+        if ( publicId is None ):
             raise ValueError('No "public_id" was specified in mapping file!')
 
-        publicId = mappingFile.get('Mapping', 'public_id')
-
-        if ( publicId == '' ):
-            raise ValueError('Public_id must not be empty!')
-
     except Exception as e:
-        auth_log('Error occured while reading mapping file "' + mappingFile + '": ' + str(e), syslog.LOG_ERR)
+        auth_log('Error occured while reading mapping file "' + mappingFilePath + '": ' + str(e), syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
     typedOTP = pamh.conversation(
@@ -150,24 +149,25 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     ## Try to read global configuration file
     try:
-        configuration = Config('/etc/pam-ardukey.conf', True)
+        configurationInstance = configuration.getInstance()
+        configurationInstance.setFilePath('/etc/pam-ardukey.conf')
 
-        servers = configuration.readList('pam-ardukey', 'servers')
-        requestTimeout = configuration.get('pam-ardukey', 'timeout')
-        apiId = configuration.get('pam-ardukey', 'apiId')
-        sharedSecret = configuration.get('pam-ardukey', 'sharedSecret')
+        servers = configurationInstance.getList('servers')
+        requestTimeout = configurationInstance.get('timeout', default = 4)
+        apiId = configurationInstance.get('api_id')
+        sharedSecret = configurationInstance.get('shared_secret')
 
-        ## Check emptiness of servers
-        if ( len(servers) == 0 ):
-            raise ValueError('Invalid value for attribute "servers"!')
+        ## Check if any auth servers are given
+        if ( servers is None or len(servers) == 0 ):
+            raise ValueError('No valid servers given (attribute "servers")!')
 
-        ## Check API id
-        if ( apiId <= 0 ):
-            raise ValueError('No valid value for attribute "apiId"!')
+        ## Check if an API id is given
+        if ( apiId is None ):
+            raise ValueError('No valid API id given (attribute "api_id")!')
 
         ## Check shared secret
-        if ( len(sharedSecret) == 0):
-            raise ValueError('No value for attribute "sharedSecret"!')
+        if ( sharedSecret is None ):
+            raise ValueError('No valid shared secret given (attribute "shared_secret")!')
 
     except Exception as e:
         auth_log('Error occured while reading configuration file: ' + str(e), syslog.LOG_ERR)
@@ -187,9 +187,9 @@ def pam_sm_authenticate(pamh, flags, argv):
     ## Try connect server by server to be sure one is up
     for server in servers:
 
-        try:
-            connection = httplib.HTTPConnection(server, timeout=requestTimeout)
+        connection = httplib.HTTPConnection(server, timeout=requestTimeout)
 
+        try:
             ## Send request to server
             connection.request('GET', '/ardukeyotp/1.0/verify?' + \
                 'otp=' + request['otp'] + \
@@ -207,6 +207,8 @@ def pam_sm_authenticate(pamh, flags, argv):
         except:
             requestError = True
             continue
+        finally:
+            connection.close()
 
     if ( requestError == True ):
         auth_log('The connection to auth server failed!')
@@ -287,7 +289,7 @@ def pam_sm_setcred(pamh, flags, argv):
     @param pamh
     @param flags
     @param argv
-    @return integer
+    @return int
     """
 
     return pamh.PAM_SUCCESS
@@ -299,7 +301,7 @@ def pam_sm_acct_mgmt(pamh, flags, argv):
     @param pamh
     @param flags
     @param argv
-    @return integer
+    @return int
     """
 
     return pamh.PAM_SUCCESS
@@ -311,7 +313,7 @@ def pam_sm_open_session(pamh, flags, argv):
     @param pamh
     @param flags
     @param argv
-    @return integer
+    @return int
     """
 
     return pamh.PAM_SUCCESS
@@ -323,7 +325,7 @@ def pam_sm_close_session(pamh, flags, argv):
     @param pamh
     @param flags
     @param argv
-    @return integer
+    @return int
     """
 
     return pamh.PAM_SUCCESS
@@ -335,7 +337,7 @@ def pam_sm_chauthtok(pamh, flags, argv):
     @param pamh
     @param flags
     @param argv
-    @return integer
+    @return int
     """
 
     return pamh.PAM_SUCCESS
