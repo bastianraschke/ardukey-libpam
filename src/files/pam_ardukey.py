@@ -9,12 +9,12 @@ Copyright 2015 Philipp Meisberger <team@pm-codeworks.de>,
 All rights reserved.
 """
 
-import os, sys, syslog
+import os, syslog
 import httplib
 import json
 import random, string
 import hmac, hashlib
-import urllib.parse
+import urlparse
 
 import pamardukey.configuration as configuration
 from pamardukey import __version__ as VERSION
@@ -223,10 +223,10 @@ def pam_sm_authenticate(pamh, flags, argv):
         ## IMPORTANT: This is potential dangerous input from outside,
         ## so we must handle it very carefully!
         response = {
-            'otp': urllib.parse.quote(httpResponse['otp']),
-            'nonce': urllib.parse.quote(httpResponse['nonce']),
-            'status': urllib.parse.quote(httpResponse['status']),
-            'time': urllib.parse.quote(httpResponse['time']),
+            'otp': urlparse.urlparse.quote(httpResponse['otp']),
+            'nonce': urlparse.urlparse.quote(httpResponse['nonce']),
+            'status': urlparse.urlparse.quote(httpResponse['status']),
+            'time': urlparse.urlparse.quote(httpResponse['time']),
         }
 
         ## Calculate hmac of server response

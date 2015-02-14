@@ -52,7 +52,7 @@ class Configuration(object):
 
         self.__configurationFilePath = configurationFilePath
 
-        self.__configParser = configparser.ConfigParser()
+        self.__configParser = ConfigParser.ConfigParser()
         self.__configParser.read(self.__configurationFilePath)
 
     def saveFile(self):
