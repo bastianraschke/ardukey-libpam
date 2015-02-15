@@ -14,7 +14,6 @@ import httplib
 import json
 import random, string
 import hmac, hashlib
-import urlparse
 
 import pamardukey.configuration as configuration
 from pamardukey import __version__ as VERSION
@@ -125,49 +124,57 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     ## Try to read mapping file in users home directory
     try:
-        mappingFile = configuration.Configuration()
-
         mappingFilePath = os.getenv('HOME') + '/.pam-ardukey.mapping'
+
+        mappingFile = configuration.Configuration()
         mappingFile.setFilePath(mappingFilePath)
 
         publicId = mappingFile.get('public_id')
 
         if ( publicId is None ):
-            raise ValueError('No "public_id" was specified in mapping file!')
+            raise ValueError('No public id is given in mapping file!')
 
     except Exception as e:
-        auth_log('Error occured while reading mapping file "' + mappingFilePath + '": ' + str(e), syslog.LOG_ERR)
+        auth_log('Error occured while reading mapping file: ' + str(e), syslog.LOG_ERR)
         return pamh.PAM_ABORT
 
-    typedOTP = pamh.conversation(
-        pamh.Message(pamh.PAM_PROMPT_ECHO_ON, 'Please type ArduKey OTP: ')).resp
+    typedOTP = pamh.conversation(pamh.Message(pamh.PAM_PROMPT_ECHO_ON,
+        'pam_ardukey ' + VERSION + ': Please type ArduKey OTP: ')).resp
 
     if ( len(typedOTP) == 0 ):
         auth_log('No ArduKey OTP was typed!')
         showPAMTextMessage(pamh, 'No ArduKey OTP was typed! Please check your ArduKey.')
         return pamh.PAM_ABORT
 
+    ## IMPORTANT for security: Check if OTP matches public id
+    if ( typedOTP[0:12] != publicId ):
+        auth_log('Access denied: The public id "' + typedOTP[0:12] + '" of OTP is not assigned to user!', syslog.LOG_WARNING)
+        showPAMTextMessage(pamh, 'Access denied!')
+        return pamh.PAM_AUTH_ERR
+
     ## Try to read global configuration file
     try:
+        configurationFilePath = '/etc/pam-ardukey.conf'
+
         configurationInstance = configuration.getInstance()
-        configurationInstance.setFilePath('/etc/pam-ardukey.conf')
+        configurationInstance.setFilePath(configurationFilePath)
 
         servers = configurationInstance.getList('servers')
-        requestTimeout = configurationInstance.get('timeout', default = 4)
+        requestTimeout = configurationInstance.get('timeout', default = 4.0)
         apiId = configurationInstance.get('api_id')
         sharedSecret = configurationInstance.get('shared_secret')
 
         ## Check if any auth servers are given
         if ( servers is None or len(servers) == 0 ):
-            raise ValueError('No valid servers given (attribute "servers")!')
+            raise ValueError('No valid auth servers are given in configuration!')
 
         ## Check if an API id is given
         if ( apiId is None ):
-            raise ValueError('No valid API id given (attribute "api_id")!')
+            raise ValueError('No valid API id is given in configuration!')
 
         ## Check shared secret
         if ( sharedSecret is None ):
-            raise ValueError('No valid shared secret given (attribute "shared_secret")!')
+            raise ValueError('No valid shared secret is given in configuration!')
 
     except Exception as e:
         auth_log('Error occured while reading configuration file: ' + str(e), syslog.LOG_ERR)
@@ -175,70 +182,69 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     ## Generate random nonce
     nonce = ''.join(random.SystemRandom().choice(
-        string.ascii_uppercase + string.digits) for _ in range(32))
+        string.ascii_lowercase + string.digits) for _ in range(32))
 
     request = {
         'otp': typedOTP,
         'nonce': nonce,
         'apiId': apiId,
-        'hmac': calculateHmac(request, sharedSecret)
     }
+
+    ## Calculate request hmac
+    request['hmac'] = calculateHmac(request, sharedSecret)
 
     ## Try connect server by server to be sure one is up
     for server in servers:
 
-        connection = httplib.HTTPConnection(server, timeout=requestTimeout)
+        connection = httplib.HTTPConnection(server, timeout=float(requestTimeout))
 
         try:
             ## Send request to server
             connection.request('GET', '/ardukeyotp/1.0/verify?' + \
                 'otp=' + request['otp'] + \
                 '&nonce=' + request['nonce'] + \
-                '&apiId=' + str(request['apiId']) + \
+                '&apiId=' + request['apiId'] + \
                 '&hmac=' + request['hmac']
             )
 
             ## Receive the response from auth server
             httpResponseData = connection.getresponse().read().decode()
 
-            requestError = False
+            lastConnectionException = None
             break
 
-        except:
-            requestError = True
+        except Exception as e:
+            lastConnectionException = e
             continue
+
         finally:
             connection.close()
 
-    if ( requestError == True ):
-        auth_log('The connection to auth server failed!')
+    if ( lastConnectionException != None ):
+        auth_log('The connection to auth server failed: ' + str(lastConnectionException))
         showPAMTextMessage(pamh, 'The connection to auth server failed!')
         return pamh.PAM_ABORT
 
     ## Try to parse JSON response
     try:
         ## Convert JSON response to dictionary
-        httpResponse = json.loads(httpResponseData)
-
         ## IMPORTANT: This is potential dangerous input from outside,
         ## so we must handle it very carefully!
-        response = {
-            'otp': urlparse.urlparse.quote(httpResponse['otp']),
-            'nonce': urlparse.urlparse.quote(httpResponse['nonce']),
-            'status': urlparse.urlparse.quote(httpResponse['status']),
-            'time': urlparse.urlparse.quote(httpResponse['time']),
-        }
+        response = json.loads(httpResponseData)
+
+        responseHmac = response['hmac']
+        response['hmac'] = ''
 
         ## Calculate hmac of server response
         calculatedResponseHmac = calculateHmac(response, sharedSecret)
 
         ## Check if calculated hmac matches received
-        if ( httpResponse['hmac'] != calculatedResponseHmac ):
+        if ( responseHmac != calculatedResponseHmac ):
             raise BadHmacSignatureError()
 
     except KeyError:
-        auth_log('The response from auth server is invalid!', syslog.LOG_ERR)
-        showPAMTextMessage(pamh, 'The response from auth server is invalid!')
+        auth_log('The response data from auth server is invalid!', syslog.LOG_ERR)
+        showPAMTextMessage(pamh, 'The response data from auth server is invalid!')
         return pamh.PAM_AUTH_ERR
 
     except BadHmacSignatureError:
@@ -263,19 +269,13 @@ def pam_sm_authenticate(pamh, flags, argv):
         showPAMTextMessage(pamh, 'Access denied!')
         return pamh.PAM_AUTH_ERR
 
-    ## IMPORTANT for security: Check if OTP matches public id
-    if ( typedOTP[0:12] != publicId ):
-        auth_log('Access denied: The public id "' + typedOTP[0:12] + '" of OTP is not assigned to user!', syslog.LOG_WARNING)
-        showPAMTextMessage(pamh, 'Access denied!')
-        return pamh.PAM_AUTH_ERR
-
-    ## Grand access only if the status is good
+    ## Grant access only if the status is good
     if ( response['status'] == 'OK' ):
         auth_log('Access granted!')
         showPAMTextMessage(pamh, 'Access granted!')
         return pamh.PAM_SUCCESS
     else:
-        auth_log('Access denied (status code: ' + response['status'] + ')!', syslog.LOG_ERR)
+        auth_log('Access denied (status code: ' + response['status'] + ')!', syslog.LOG_WARNING)
         showPAMTextMessage(pamh, 'Access denied!')
         return pamh.PAM_AUTH_ERR
 

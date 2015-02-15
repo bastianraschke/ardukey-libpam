@@ -104,7 +104,13 @@ class Configuration(object):
         @return object
         """
 
-        return self.__configParser.get(section, key, fallback=default)
+        try:
+            value = self.__configParser.get(section, key)
+
+        except ConfigParser.NoOptionError:
+            value = default
+
+        return value
 
     def getList(self, key, section = 'Configuration', default = None):
         """
