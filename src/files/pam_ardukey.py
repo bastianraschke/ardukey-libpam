@@ -90,7 +90,7 @@ def auth_log(message, priority=syslog.LOG_INFO):
     """
 
     syslog.openlog(facility=syslog.LOG_AUTH)
-    syslog.syslog(priority, 'pam_ardukey: ' + message)
+    syslog.syslog(priority, 'pam_ardukey: ' + VERSION + ': ' + message)
     syslog.closelog()
 
 def pam_sm_authenticate(pamh, flags, argv):
