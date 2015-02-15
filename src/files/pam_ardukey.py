@@ -124,6 +124,7 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     ## Try to read mapping file in users home directory
     try:
+        ## TODO: Add check if os.getenv('HOME') is None
         mappingFilePath = os.getenv('HOME') + '/.pam-ardukey.mapping'
 
         mappingFile = configuration.Configuration()
