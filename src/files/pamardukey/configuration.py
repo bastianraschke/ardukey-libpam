@@ -25,16 +25,14 @@ class Configuration(object):
     The ConfigParser object.
     """
 
-    __configurationFilePath = ''
-    __configParser = None
-
     def __init__(self):
         """
         Constructor
 
         """
 
-        pass
+        self.__configurationFilePath = ''
+        self.__configParser = None
 
     def setFilePath(self, configurationFilePath):
         """
