@@ -9,7 +9,8 @@ Copyright 2015 Philipp Meisberger <team@pm-codeworks.de>,
 All rights reserved.
 """
 
-import os, syslog
+import syslog
+import os, os.path
 import httplib
 import json
 import random, string
@@ -124,8 +125,11 @@ def pam_sm_authenticate(pamh, flags, argv):
 
     ## Try to read mapping file in users home directory
     try:
-        ## TODO: Add check if os.getenv('HOME') is None
-        mappingFilePath = os.getenv('HOME') + '/.pam-ardukey.mapping'
+        mappingFilePath = os.path.expanduser('~') + '/.pam-ardukey.mapping'
+
+        ## Check if path/file is readable
+        if ( os.access(mappingFilePath, os.R_OK) == False ):
+            raise Exception('The mapping file was not found!')
 
         mappingFile = configuration.Configuration()
         mappingFile.setFilePath(mappingFilePath)
