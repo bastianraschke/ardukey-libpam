@@ -10,9 +10,9 @@ All rights reserved.
 """
 
 import os
-from argparse
+import argparse
 
-import pamardukey.configuration as configuration
+import pamardukey.configuration as Config
 from pamardukey import __version__ as VERSION
 
 
@@ -39,22 +39,22 @@ def addUser(userName):
     @return bool
     """
 
+    ## Users can only change their own configuration
+    if ( os.getlogin() != userName ):
+        print('You ('+ os.getlogin() +') cannot add another user ('+ userName +')!')
+        return False
+
     ## Confirmation dialog
     if ( showConfirmationDialog('Are you sure you want to add the user "' + userName + '"?') == False ):
         print('Adding user canceled.')
         return False
 
-    ## Users can only change their own configuration
-    ## TODO: root is not able to change users config yet
-    if ( os.getlogin() != userName ):
-        raise Exception('You cannot add another user! Only Root can do that!')
-
     ## Tries to init mapping file in users home directory
     try:
-        mappingFile = Config(os.getenv('HOME') + '/.pam-ardukey.mapping')
+        mappingFile = Config.Configuration(os.getenv('HOME') + '/.pam-ardukey.mapping')
 
         ## Public ID exists in mapping file?
-        if ( mappingFile.itemExists('Mapping', 'public_id') and
+        if ( mappingFile.exists('Public_id', 'Mapping') and
             showConfirmationDialog('Public_id already exists! Do you want to override?') == False ):
             print('Adding user canceled.')
             return False
@@ -64,7 +64,12 @@ def addUser(userName):
         if ( publicId == '' ):
             raise Exception('Public_id must not be empty!')
 
-        mappingFile.set('Mapping', 'Public_id', publicId)
+        mappingFile.set('Public_id', publicId, 'Mapping')
+
+        if ( mappingFile.saveFile() == False ):
+            raise Exception('Could not save configuration file in home directory!')
+
+        print('Successfully added user "'+ userName +'"!')
 
     except Exception as e:
         print('Error occured while parsing mapping file: '+ str(e))
@@ -80,17 +85,24 @@ def removeUser(userName):
     @return bool
     """
 
+    ## Users can only change their own configuration
+    if ( os.getlogin() != userName ):
+        print('You ('+ os.getlogin() +') cannot add another user ('+ userName +')!')
+        return False
+
     ## Confirmation dialog
     if ( showConfirmationDialog('Are you sure you want to remove the user "' + userName + '"?') == False ):
         print('Removing user canceled.')
         return False
 
-    ## Users can only change their own configuration
-    ## TODO: root is not able to change users config yet
-    if ( os.getlogin() != userName ):
-        raise Exception('You cannot add another user! Only Root can do that!')
+   ## Tries to init mapping file in users home directory
+    try:
+        os.remove(os.getenv('HOME') + '/.pam-ardukey.mapping')
+        print('Successfully removed user "'+ userName +'"!')
 
-    ## TODO
+    except Exception as e:
+        print('Error occured while parsing mapping file: '+ str(e))
+        return False
 
     return True
 
