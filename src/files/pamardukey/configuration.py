@@ -4,8 +4,8 @@
 """
 PAM ArduKey
 
-Copyright 2015 Bastian Raschke <bastian.raschke@posteo.de>,
-               Philipp Meisberger <team@pm-codeworks.de>
+Copyright 2015 Philipp Meisberger <team@pm-codeworks.de>,
+               Bastian Raschke <bastian.raschke@posteo.de>
 All rights reserved.
 """
 
