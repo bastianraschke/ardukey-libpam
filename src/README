@@ -1,0 +1,111 @@
+## ArduKey PAM
+## written by Bastian Raschke
+##
+
+
+## Installation
+##
+
+First you have to install the server via your package manager. For example:
+
+~# apt-get install libpam-ardukey
+
+Important note: First you need to add the "PM Codeworks" repository. See
+http://www.pm-codeworks.de/repository.html for the instructions.
+
+
+## Optional: Manual package build
+##
+
+If you don't want to use pre-build packages, you can easyly build your own
+packages using the tool "debuild":
+
+~$ debuild
+
+After that, the generated packages can be found in the upper directory. You can
+install the packages with "dpkg":
+
+~# dpkg -i ../*.deb
+
+And fix the dependency problems, if occurred:
+
+~# apt-get -f install
+
+
+## Configuration
+## Note: All changes will be done in file "/etc/pam-ardukey.conf".
+##
+
+First we have to change the auth server list:
+
+servers = 127.0.0.1:8080,127.0.0.2:8080
+
+In this case the PAM module will connect the servers which are listening on the
+addresses "127.0.0.1" and "127.0.0.2" (both on port 8080). If the first server
+in the list is not available, the next server will be tried to connect.
+
+Note: You NEVER should provide the auth server on the same machine as the PAM
+module (it doesn't add any security). So change the value to the address(es) of
+your auth servers:
+
+servers = 11.22.33.44:8080,11.22.33.545:8080
+
+Now we need to add an API key to provide protected communication between the
+client (PAM module) and the auth server. The API key (consisting of API id and
+shared secret) must be generated on the auth server machine.
+
+For example we use the API id "1" and the matching shared secret:
+
+api_id = 1
+shared_secret = abcdef
+
+
+## Setup the module for two factor authentication
+## Important: You need a OpenSSH server > 6.2 for two factor feature.
+##
+
+First check if the parameter "ChallengeResponseAuthentication" is set to "yes"
+in the SSH server configuration "/etc/ssh/sshd_config".
+
+Add the following block to the SSH server configuration "/etc/ssh/sshd_config":
+
+Match Group twofactor
+    AuthenticationMethods publickey,keyboard-interactive
+
+Now we need to create the above user group: 
+
+~# addgroup twofactor
+
+Create the PAM profile with following command:
+
+~# echo "auth sufficient pam_python.so pam_ardukey.py" > /etc/pam.d/ardukey-twofactor
+
+Add the following block to "/etc/pam.d/sshd" (above "@include common-auth"):
+
+# ArduKey two factor authentication.
+@include ardukey-twofactor
+
+
+## Setup a user for two factor authentication
+##
+
+For example the user "root" will be protected by two factor authentication.
+
+Add a mapping file in users home directory "/root/.pam-ardukey.mapping" with
+the following content:
+
+[Configuration]
+public_id = cccccccccccb
+
+Note: In this case the ArduKey with the public id "cccccccccccb" is assigned to
+the user "root". Be sure this is a existing public id!
+
+Finally add the user "root" to the "twofactor" group:
+
+~# adduser root twofactor
+
+And restart the SSH server:
+
+~# /etc/init.d/ssh restart
+
+From now, the SSH login requires two factor authentication with ArduKey.
