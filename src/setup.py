@@ -10,7 +10,7 @@ setup(
     author          = 'Philipp Meisberger',
     author_email    = 'team@pm-codeworks.de',
     url             = 'http://www.pm-codeworks.de',
-    license         = 'Simplified BSD License',
+    license         = 'D-FSL',
     package_dir     = {'': 'files'},
     packages        = ['pamardukey'],
 )
