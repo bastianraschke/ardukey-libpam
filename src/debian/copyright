@@ -1,6 +1,6 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: PAM ArduKey
-Upstream-Contact: Bastian Raschke <bastian.raschke@posteo.de>
+Upstream-Contact: Philipp Meisberger <team@pm-codeworks.de>
 Source: http://apt.pm-codeworks.de/pool/main/libp/libpam-ardukey/libpam-ardukey_1.0.tar.gz
 
 Files: *
