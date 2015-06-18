@@ -57,7 +57,7 @@ shared secret) must be generated on the auth server machine.
 For example we use the API id "1" and the matching shared secret:
 
 api_id = 1
-shared_secret = abcdef
+shared_secret = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 
 ## Setup the module for two factor authentication
@@ -85,6 +85,10 @@ Add the following block to "/etc/pam.d/sshd" (above "@include common-auth"):
 # ArduKey two factor authentication.
 @include ardukey-twofactor
 
+And restart the SSH server:
+
+~# /etc/init.d/ssh restart
+
 
 ## Setup a user for two factor authentication
 ##
@@ -103,9 +107,5 @@ the user "root". Be sure this is a existing public id!
 Finally add the user "root" to the "twofactor" group:
 
 ~# adduser root twofactor
-
-And restart the SSH server:
-
-~# /etc/init.d/ssh restart
 
 From now, the SSH login requires two factor authentication with ArduKey.
