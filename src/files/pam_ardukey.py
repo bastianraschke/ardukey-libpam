@@ -151,7 +151,7 @@ def pam_sm_authenticate(pamh, flags, argv):
         showPAMTextMessage(pamh, 'No ArduKey OTP was typed! Please check your ArduKey.')
         return pamh.PAM_ABORT
 
-    ## IMPORTANT for security: Check if OTP matches public id
+    ## IMPORTANT FOR SECURITY: Check if OTP matches public id
     if ( typedOTP[0:12] != publicId ):
         auth_log('Access denied: The public id "' + typedOTP[0:12] + '" of OTP is not assigned to user!', syslog.LOG_WARNING)
         showPAMTextMessage(pamh, 'Access denied!')

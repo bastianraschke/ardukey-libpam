@@ -13,11 +13,11 @@ import os
 import getpass
 import argparse
 
-import pamardukey.configuration as Config
+import pamardukey.configuration as configuration
 from pamardukey import __version__ as VERSION
 
 
-def showConfirmationDialog(question = ''):
+def showConfirmationDialog(question):
     """
     Show confirmation dialog.
 
@@ -26,15 +26,11 @@ def showConfirmationDialog(question = ''):
     """
 
     answer = raw_input(question + ' (Y/n)')
-
-    if ( answer not in ['y', 'Y', ''] ):
-        return False
-    else:
-        return True
+    return (answer in ['y', 'Y', ''])
 
 def addUser(userName):
     """
-    Add a new user to PAM ArduKey.
+    Add an ArduKey mapping for a user.
 
     @param string userName
     @return bool
@@ -44,6 +40,13 @@ def addUser(userName):
     if ( getpass.getuser() != userName ):
         print('You ('+ getpass.getuser() +') cannot add another user ('+ userName +')!')
         return False
+
+    """
+    ## Checks if user is root
+    if ( os.geteuid() != 0 ):
+        print('[Error] You need to have root privileges to add a user!')
+        return False
+    """
 
     ## Confirmation dialog
     if ( showConfirmationDialog('Are you sure you want to add the user "' + userName + '"?') == False ):
@@ -52,35 +55,35 @@ def addUser(userName):
 
     ## Tries to init mapping file in users home directory
     try:
-        mappingFile = Config.Configuration(os.getenv('HOME') + '/.pam-ardukey.mapping')
+        mappingFile = configuration.Configuration(os.getenv('HOME') + '/.pam-ardukey.mapping')
 
         ## Public ID exists in mapping file?
-        if ( mappingFile.exists('Public_id', 'Mapping') and
-            showConfirmationDialog('Public_id already exists! Do you want to override?') == False ):
+        if ( mappingFile.exists('public_id', 'Mapping') and
+            showConfirmationDialog('An ArduKey is already set! Do you want to override the configuration?') == False ):
             print('Adding user canceled.')
             return False
 
-        publicId = raw_input('Please enter your "Public_id": ')
+        publicId = raw_input('Please enter the public id of your ArduKey: ')
 
         if ( publicId == '' ):
-            raise Exception('Public_id must not be empty!')
+            raise Exception('public_id must not be empty!')
 
-        mappingFile.set('Public_id', publicId, 'Mapping')
+        mappingFile.set('public_id', publicId, 'Mapping')
 
         if ( mappingFile.saveFile() == False ):
             raise Exception('Could not save configuration file in home directory!')
 
-        print('Successfully added user "'+ userName +'"!')
+        print('Successfully added the user "'+ userName +'"!')
 
     except Exception as e:
-        print('Error occured while parsing mapping file: '+ str(e))
+        print('Error occured while creating mapping file: ' + str(e))
         return False
 
     return True
 
 def removeUser(userName):
     """
-    Remove user from configuration.
+    Remove the ArduKey mapping of a user.
 
     @param string userName
     @return bool
@@ -90,6 +93,13 @@ def removeUser(userName):
     if ( getpass.getuser() != userName ):
         print('You ('+ getpass.getuser() +') cannot add another user ('+ userName +')!')
         return False
+
+    """
+    ## Checks if user is root
+    if ( os.geteuid() != 0 ):
+        print('[Error] You need to have root privileges to add a user!')
+        return False
+    """
 
     ## Confirmation dialog
     if ( showConfirmationDialog('Are you sure you want to remove the user "' + userName + '"?') == False ):
@@ -99,10 +109,10 @@ def removeUser(userName):
    ## Tries to init mapping file in users home directory
     try:
         os.remove(os.getenv('HOME') + '/.pam-ardukey.mapping')
-        print('Successfully removed user "'+ userName +'"!')
+        print('Successfully removed the user "'+ userName +'"!')
 
     except Exception as e:
-        print('Error occured while parsing mapping file: '+ str(e))
+        print('Error occured while removing mapping file: ' + str(e))
         return False
 
     return True
@@ -116,7 +126,7 @@ if ( __name__ == '__main__' ):
     parser.add_argument('-v', '--version',
         action='version',
         version='PAM ArduKey configuration program ' + VERSION,
-        help='Prints version and exit.'
+        help='Print version and exit.'
     )
 
     parser.add_argument('--add-user',
@@ -126,7 +136,7 @@ if ( __name__ == '__main__' ):
         nargs=1,
         metavar='NAME',
         type=str,
-        help='Adds a new user.'
+        help='Add a new user.'
     )
 
     parser.add_argument('--remove-user',
@@ -136,7 +146,7 @@ if ( __name__ == '__main__' ):
         nargs=1,
         metavar='NAME',
         type=str,
-        help='Removes a user.'
+        help='Remove a user.'
     )
 
     args = vars(parser.parse_args())
