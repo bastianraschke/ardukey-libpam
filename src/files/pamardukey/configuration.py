@@ -4,8 +4,8 @@
 """
 PAM ArduKey
 
-Copyright 2015 Philipp Meisberger <team@pm-codeworks.de>,
-               Bastian Raschke <bastian.raschke@posteo.de>
+Copyright 2015 Bastian Raschke <bastian.raschke@posteo.de>,
+               Philipp Meisberger <team@pm-codeworks.de>
 All rights reserved.
 """
 
@@ -25,21 +25,33 @@ class Configuration(object):
     The ConfigParser object.
     """
 
-    def __init__(self, configurationFilePath):
+    def __init__(self):
         """
         Constructor
 
         """
 
-        ## Create file if not exists
+        self.__configurationFilePath = ''
+        self.__configParser = None
+
+    def setFilePath(self, configurationFilePath):
+        """
+        Set path to the configuration file.
+
+        @attribute str configurationFilePath
+        The path to the configuration file.
+
+        @return void
+        """
+
+        ## Check if path/file is readable
         if ( os.access(configurationFilePath, os.R_OK) == False ):
-            fileHandle = open(configurationFilePath, 'w')
+            raise ValueError('The configuration file "' + configurationFilePath + '" is not readable!')
 
         self.__configurationFilePath = configurationFilePath
 
         self.__configParser = ConfigParser.ConfigParser()
         self.__configParser.read(self.__configurationFilePath)
-
 
     def saveFile(self):
         """

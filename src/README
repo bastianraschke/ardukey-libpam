@@ -60,7 +60,7 @@ api_id = 1
 shared_secret = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 
-## Setup the module for two factor authentication
+## Setup the module for SSH two factor authentication
 ## Important: You need a OpenSSH server > 6.2 for two factor feature.
 ##
 
@@ -82,7 +82,7 @@ Create the PAM profile with following command:
 
 Add the following block to "/etc/pam.d/sshd" (above "@include common-auth"):
 
-# ArduKey two factor authentication.
+# ArduKey two factor authentication:
 @include ardukey-twofactor
 
 And restart the SSH server:
@@ -90,22 +90,34 @@ And restart the SSH server:
 ~# /etc/init.d/ssh restart
 
 
-## Setup a user for two factor authentication
+## Setup a user for SSH two factor authentication
 ##
 
 For example the user "root" will be protected by two factor authentication.
 
-Add a mapping file in users home directory "/root/.pam-ardukey.mapping" with
-the following content:
+Just use the following command to add the user "root" (the public ID of the
+desired ArduKey must be entered after confirmation). This means the ArduKey is
+assigned to this user - be sure this is the correct public ID!
 
-[Configuration]
-public_id = cccccccccccb
+~# pam-ardukey-conf --add-user root
+Are you sure you want to add the user "root"? (Y/n) Y
+Please enter your "Public_id": cccccccccccb
+Successfully added user "root"!
 
-Note: In this case the ArduKey with the public id "cccccccccccb" is assigned to
-the user "root". Be sure this is a existing public id!
+The program just writes a simple text file in users home directory (in this case
+"/root/.pam-ardukey.mapping"). Feel free to check it out :-)
 
 Finally add the user "root" to the "twofactor" group:
 
 ~# adduser root twofactor
 
 From now, the SSH login requires two factor authentication with ArduKey.
+
+
+## Further information
+##
+
+Additionally you can check out the following howto, which explains the complete
+ArduKey infrastructure in detail (the howto is in german):
+
+https://sicherheitskritisch.de/2015/06/ardukey-ein-hardware-security-token-fuer-one-time-passwords-otp/
