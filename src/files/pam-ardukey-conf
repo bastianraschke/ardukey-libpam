@@ -87,8 +87,8 @@ def removeUser(userName):
     """
 
     ## Users can only change their own configuration
-    if ( os.getlogin() != userName ):
-        print('You ('+ os.getlogin() +') cannot add another user ('+ userName +')!')
+    if ( getpass.getuser() != userName ):
+        print('You ('+ getpass.getuser() +') cannot add another user ('+ userName +')!')
         return False
 
     ## Confirmation dialog
