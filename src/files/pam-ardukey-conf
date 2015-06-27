@@ -30,27 +30,20 @@ def showConfirmationDialog(question):
 
 def addUser(userName):
     """
-    Add an ArduKey mapping for a user.
+    Assign an ArduKey device to a user.
 
     @param string userName
     @return bool
     """
 
-    ## Users can only change their own configuration
-    if ( getpass.getuser() != userName ):
-        print('You ('+ getpass.getuser() +') cannot add another user ('+ userName +')!')
+    ## Users can only change their own configuration (except of root)
+    if ( getpass.getuser() != userName and os.geteuid() != 0 ):
+        print('You are not allowed to assign an ArduKey device to user "' + userName + '"!')
         return False
-
-    """
-    ## Checks if user is root
-    if ( os.geteuid() != 0 ):
-        print('[Error] You need to have root privileges to add a user!')
-        return False
-    """
 
     ## Confirmation dialog
-    if ( showConfirmationDialog('Are you sure you want to add the user "' + userName + '"?') == False ):
-        print('Adding user canceled.')
+    if ( showConfirmationDialog('Are you sure you want to assign an ArduKey device to the user "' + userName + '"?') == False ):
+        print('Canceled.')
         return False
 
     ## Tries to init mapping file in users home directory
@@ -58,22 +51,21 @@ def addUser(userName):
         mappingFile = configuration.Configuration(os.getenv('HOME') + '/.pam-ardukey.mapping')
 
         ## Public ID exists in mapping file?
-        if ( mappingFile.exists('public_id', 'Mapping') and
-            showConfirmationDialog('An ArduKey is already set! Do you want to override the configuration?') == False ):
-            print('Adding user canceled.')
+        if ( mappingFile.exists('public_id', 'Mapping') and showConfirmationDialog('An ArduKey device is already set! Do you want to override the public ID?') == False ):
+            print('Canceled.')
             return False
 
-        publicId = raw_input('Please enter the public id of your ArduKey: ')
+        publicId = raw_input('Please enter the public ID of your ArduKey device: ')
 
-        if ( publicId == '' ):
-            raise Exception('public_id must not be empty!')
+        if ( len(publicId) != 12 ):
+            raise ValueError('The given public ID is invalid (the length must be 12)!')
 
         mappingFile.set('public_id', publicId, 'Mapping')
 
         if ( mappingFile.saveFile() == False ):
             raise Exception('Could not save configuration file in home directory!')
 
-        print('Successfully added the user "'+ userName +'"!')
+        print('Successfully assigned the ArduKey device to the user "' + userName + '"!')
 
     except Exception as e:
         print('Error occured while creating mapping file: ' + str(e))
@@ -83,33 +75,26 @@ def addUser(userName):
 
 def removeUser(userName):
     """
-    Remove the ArduKey mapping of a user.
+    Remove the ArduKey device from a user.
 
     @param string userName
     @return bool
     """
 
-    ## Users can only change their own configuration
-    if ( getpass.getuser() != userName ):
-        print('You ('+ getpass.getuser() +') cannot add another user ('+ userName +')!')
+    ## Users can only change their own configuration (except of root)
+    if ( getpass.getuser() != userName and os.geteuid() != 0 ):
+        print('You are not allowed to remove the ArduKey device from user "' + userName + '"!')
         return False
-
-    """
-    ## Checks if user is root
-    if ( os.geteuid() != 0 ):
-        print('[Error] You need to have root privileges to add a user!')
-        return False
-    """
 
     ## Confirmation dialog
-    if ( showConfirmationDialog('Are you sure you want to remove the user "' + userName + '"?') == False ):
-        print('Removing user canceled.')
+    if ( showConfirmationDialog('Are you sure you want to remove the ArduKey device from the user "' + userName + '"?') == False ):
+        print('Canceled.')
         return False
 
    ## Tries to init mapping file in users home directory
     try:
         os.remove(os.getenv('HOME') + '/.pam-ardukey.mapping')
-        print('Successfully removed the user "'+ userName +'"!')
+        print('Successfully removed the ArduKey device from the user "' + userName + '"!')
 
     except Exception as e:
         print('Error occured while removing mapping file: ' + str(e))
@@ -136,7 +121,7 @@ if ( __name__ == '__main__' ):
         nargs=1,
         metavar='NAME',
         type=str,
-        help='Add a new user.'
+        help='Assign an ArduKey device to a user.'
     )
 
     parser.add_argument('--remove-user',
@@ -146,7 +131,7 @@ if ( __name__ == '__main__' ):
         nargs=1,
         metavar='NAME',
         type=str,
-        help='Remove a user.'
+        help='Remove the ArduKey device from a user.'
     )
 
     args = vars(parser.parse_args())
