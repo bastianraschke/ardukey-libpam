@@ -10,7 +10,7 @@ All rights reserved.
 """
 
 import syslog
-import os, os.path
+import os
 import httplib
 import json
 import random, string
@@ -134,7 +134,7 @@ def pam_sm_authenticate(pamh, flags, argv):
         mappingFile = configuration.Configuration()
         mappingFile.setFilePath(mappingFilePath)
 
-        publicId = mappingFile.get('public_id')
+        publicId = mappingFile.get('public_id', 'Mapping')
 
         if ( publicId is None ):
             raise ValueError('No public id is given in mapping file!')

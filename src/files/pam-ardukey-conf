@@ -48,7 +48,10 @@ def addUser(userName):
 
     ## Tries to init mapping file in users home directory
     try:
-        mappingFile = configuration.Configuration(os.getenv('HOME') + '/.pam-ardukey.mapping')
+        mappingFilePath = os.path.expanduser('~' + userName) + '/.pam-ardukey.mapping'
+
+        mappingFile = configuration.Configuration()
+        mappingFile.setFilePath(mappingFilePath)
 
         ## Public ID exists in mapping file?
         if ( mappingFile.exists('public_id', 'Mapping') and showConfirmationDialog('An ArduKey device is already set! Do you want to override the public ID?') == False ):
@@ -93,7 +96,9 @@ def removeUser(userName):
 
    ## Tries to init mapping file in users home directory
     try:
-        os.remove(os.getenv('HOME') + '/.pam-ardukey.mapping')
+        mappingFilePath = os.path.expanduser('~' + userName) + '/.pam-ardukey.mapping'
+        os.remove(mappingFilePath)
+
         print('Successfully removed the ArduKey device from the user "' + userName + '"!')
 
     except Exception as e:
