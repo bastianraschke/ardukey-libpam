@@ -1,4 +1,4 @@
-## ArduKey PAM
+## PAM ArduKey
 ## written by Bastian Raschke
 ##
 
@@ -46,13 +46,17 @@ in the list is not available, the next server will be tried to connect.
 
 Important note: You never should provide the auth server on the same machine as
 the PAM module (it doesn't add any security). So change the value to the
-address(es) of your auth servers:
+address(es) of your auth servers.
+
+For example:
 
 servers = 11.22.33.44:8080,11.22.33.45:8080
 
 Now we need to change the "API key" to provide signed communication between the
 PAM module and the auth server. The API key (consisting of an API id and a
-shared secret) must be generated on the auth server machine:
+shared secret) must be generated on the auth server machine.
+
+For example:
 
 api_id = 1
 shared_secret = 4NJCNJEQJCAZW58EQKQRO8MI6DDHDRI9HLF2J7LFA8WF5K7HCN1DD9YN1WRJLREU
@@ -113,6 +117,6 @@ From now, the SSH login requires additional 2FA with ArduKey.
 ##
 
 Additionally you can check out the following article, which explains the
-complete ArduKey infrastructure in detail (the article is in german):
+complete ArduKey infrastructure in detail (the article is in German):
 
 https://sicherheitskritisch.de/2015/06/ardukey-otp-generator-fuer-zweifaktor-authentifizierung-2fa-mit-arduino/

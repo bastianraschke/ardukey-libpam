@@ -44,14 +44,12 @@ class Configuration(object):
         @return void
         """
 
-        ## Check if path/file is readable
-        if ( os.access(configurationFilePath, os.R_OK) == False ):
-            raise ValueError('The configuration file "' + configurationFilePath + '" is not readable!')
-
         self.__configurationFilePath = configurationFilePath
-
         self.__configParser = ConfigParser.ConfigParser()
-        self.__configParser.read(self.__configurationFilePath)
+
+        ## Parse configuration file only if éxisting
+        if ( os.access(configurationFilePath, os.R_OK) == True ):
+            self.__configParser.read(self.__configurationFilePath)
 
     def saveFile(self):
         """
@@ -60,16 +58,15 @@ class Configuration(object):
         @return bool
         """
 
-        ## Check if path/file is writable
-        if ( os.access(self.__configurationFilePath, os.W_OK) == True ):
-
+        ## Try to write configuration file
+        try:
             fileHandle = open(self.__configurationFilePath, 'w')
             self.__configParser.write(fileHandle)
             fileHandle.close()
 
             return True
-
-        return False
+        except:
+            return False
 
     def exists(self, key, section = 'Configuration'):
         """
