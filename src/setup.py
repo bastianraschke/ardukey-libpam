@@ -5,7 +5,7 @@ from distutils.core import setup
 
 setup(
     name            = 'PAM ArduKey',
-    version         = '1.0',
+    version         = '1.0.1',
     description     = 'Pluggable Authentication Module for 2FA with ArduKey.',
     author          = 'Philipp Meisberger',
     author_email    = 'team@pm-codeworks.de',

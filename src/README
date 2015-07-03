@@ -36,7 +36,7 @@ And fix the dependency problems, if occurred:
 ## Note: All changes will be done in file "/etc/pam-ardukey.conf".
 ##
 
-First we have to change the auth server list:
+First we have to change the auth-server list:
 
 servers = 127.0.0.1:8080,127.0.0.2:8080
 
@@ -44,17 +44,17 @@ In this case the PAM module will connect the servers which are listening on the
 addresses "127.0.0.1" and "127.0.0.2" (both on port 8080). If the first server
 in the list is not available, the next server will be tried to connect.
 
-Important note: You never should provide the auth server on the same machine as
+Important note: You never should provide the auth-server on the same machine as
 the PAM module (it doesn't add any security). So change the value to the
-address(es) of your auth servers.
+address(es) of your auth-server(s).
 
 For example:
 
 servers = 11.22.33.44:8080,11.22.33.45:8080
 
 Now we need to change the "API key" to provide signed communication between the
-PAM module and the auth server. The API key (consisting of an API id and a
-shared secret) must be generated on the auth server machine.
+PAM module and the auth-server. The API key (consisting of an API id and a
+shared secret) must be generated on the auth-server machine.
 
 For example:
 
