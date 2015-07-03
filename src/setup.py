@@ -4,7 +4,7 @@
 from setuptools import setup
 
 setup(
-    name            = 'PAM ArduKey',
+    name            = 'pamardukey',
     version         = '1.0.1', ## Never forget to change module version as well!
     description     = 'Pluggable Authentication Module for 2FA with ArduKey.',
     author          = 'Philipp Meisberger',

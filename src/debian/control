@@ -17,5 +17,5 @@ Depends: python (>= 2.7),
          ${python:Depends}, ${misc:Depends}
 Homepage: https://sicherheitskritisch.de
 Description: Pluggable Authentication Module for 2FA with ArduKey.
- This packages provides a PAM module that is intended to use ArduKey OTP devices
+ This package provides a PAM module that is intended to use ArduKey OTP devices
  for two factor authentication (2FA) on remote machines to increase security.
