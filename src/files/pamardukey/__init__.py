@@ -9,4 +9,4 @@ Copyright 2015 Philipp Meisberger <team@pm-codeworks.de>,
 All rights reserved.
 """
 
-__version__ = '1.0'
+__version__ = '1.0.1'
