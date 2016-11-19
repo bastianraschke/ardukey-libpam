@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+
+src/debian/libpam-ardukey/
+*.DS_Store
