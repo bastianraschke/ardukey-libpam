@@ -20,6 +20,7 @@ http://www.pm-codeworks.de/repository.html for the instructions.
 If you don't want to use pre-build packages, you can easyly build your own
 packages using the tool "debuild":
 
+~$ cd ./src/
 ~$ debuild
 
 After that, the generated packages can be found in the upper directory. You can
