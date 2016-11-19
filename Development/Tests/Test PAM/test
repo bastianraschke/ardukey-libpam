@@ -1,6 +1,0 @@
-Name: Test PAM
-Default: yes
-Priority: 257
-Auth-Type: Primary
-Auth:
-	sufficient			pam_python.so pam_test.py config=/etc/pamardukey.conf

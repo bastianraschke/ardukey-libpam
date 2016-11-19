@@ -1,8 +1,0 @@
-Name: Yubico authentication with YubiKey
-Default: no
-Priority: 704
-Auth-Type: Primary
-Auth:
-	required	pam_yubico.so	#DEBCONF_REPLACE
-Auth-Initial:
-	required	pam_yubico.so	#DEBCONF_REPLACE
