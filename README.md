@@ -53,7 +53,7 @@ Add the following block to the SSH server configuration `/etc/ssh/sshd_config`:
     Match Group twofactor
         AuthenticationMethods publickey,keyboard-interactive
 
-Now we need to create the above user group: 
+Now we need to create the above user group:
 
     ~# addgroup twofactor
 
@@ -89,7 +89,7 @@ From now, the SSH login requires additional 2FA with ArduKey.
 
 ## Further information
 
-Additionally you can check out [this article](https://sicherheitskritisch.de/2015/06/ardukey-otp-generator-fuer-zweifaktor-authentifizierung-2fa-mit-arduino/), which explains the complete ArduKey infrastructure in detail (the article is in German):  
+Additionally you can check out [this article](https://sicherheitskritisch.de/2015/06/ardukey-otp-generator-fuer-zweifaktor-authentifizierung-2fa-mit-arduino/), which explains the complete ArduKey infrastructure in detail (the article is in German):
 
 ## Questions
 
